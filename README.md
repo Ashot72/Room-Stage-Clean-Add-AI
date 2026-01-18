@@ -45,6 +45,7 @@ Control **azimuth** (horizontal rotation), **elevation** (vertical angle), and *
 #### 6. Video Generation 🎥✨
 Convert static room images into smooth, immersive videos.  
 Use simple text prompts such as *“360-degree rotation”* or *“slow pan across the room”*, and select a duration of 5 or 10 seconds to create realistic walkthroughs, virtual tours, or dynamic presentations.
+
 ---
 
 #### 👉 Links & Resources
@@ -83,5 +84,6 @@ npm run dev
 
 - Open the **Run** view (`View → Run` or `Ctrl+Shift+D`) to access the debug configuration
 
-📺 **Video: (Cleaning, Staging & Adding Items)** [Watch on YouTube](https://youtu.be/yqsgr9Z5MJo) 
+📺 **Video: (Cleaning, Staging & Adding Items)** [Watch on YouTube](https://youtu.be/yqsgr9Z5MJo)
+
 📺 **Video: (Multiple Angles and Video Generation)** [Watch on YouTube](https://youtu.be/DKne0nvZxJA) 
