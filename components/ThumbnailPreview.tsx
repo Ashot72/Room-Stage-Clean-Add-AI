@@ -14,6 +14,7 @@ interface ThumbnailPreviewProps {
   selectedForView?: string | null
   selectedForDifferentAngles?: string | null
   selectedForVideo?: string | null
+  selectedForConvertTo3d?: string | null
 }
 
 const getTypeLabel = (type: StoredImage['type']) => {
@@ -25,6 +26,7 @@ const getTypeLabel = (type: StoredImage['type']) => {
     added: 'Add Item',
     angled: 'Different Angles',
     video: 'Video',
+    '3d-object': '3D Object',
   }
   return labels[type] || 'Image'
 }
@@ -40,7 +42,8 @@ export default function ThumbnailPreview({
   selectedForAddItem,
   selectedForView,
   selectedForDifferentAngles,
-  selectedForVideo
+  selectedForVideo,
+  selectedForConvertTo3d
 }: ThumbnailPreviewProps) {
   if (!isVisible || !image) return null
 
@@ -52,6 +55,8 @@ export default function ThumbnailPreview({
     borderColor = 'border-purple-500'
   } else if (selectedForVideo === image.id) {
     borderColor = 'border-indigo-500'
+  } else if (selectedForConvertTo3d === image.id) {
+    borderColor = 'border-teal-500'
   } else if (selectedForClean === image.id) {
     borderColor = 'border-cyan-500'
   } else if (selectedBefore === image.id) {

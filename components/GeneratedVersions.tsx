@@ -15,7 +15,8 @@ interface GeneratedVersionsProps {
   selectedForView: string | null
   selectedForDifferentAngles: string | null
   selectedForVideo: string | null
-  onSetImageSelection: (type: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video', imageId: string) => void
+  selectedForConvertTo3d: string | null
+  onSetImageSelection: (type: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d', imageId: string) => void
   onDelete: (imageId: string) => void
 }
 
@@ -29,6 +30,7 @@ export default function GeneratedVersions({
   selectedForView,
   selectedForDifferentAngles,
   selectedForVideo,
+  selectedForConvertTo3d,
   onSetImageSelection,
   onDelete,
 }: GeneratedVersionsProps) {
@@ -97,7 +99,7 @@ export default function GeneratedVersions({
     })
   }
 
-  const handleContextAction = (action: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'view-angles' | 'generate-video' | 'download' | 'delete') => {
+  const handleContextAction = (action: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'view-angles' | 'generate-video' | 'convert-to-3d' | 'download' | 'delete') => {
     if (!contextMenu) return
 
     switch (action) {
@@ -139,6 +141,10 @@ export default function GeneratedVersions({
       case 'generate-video':
         // Set image for video generation
         onSetImageSelection('video', contextMenu.imageId)
+        break
+      case 'convert-to-3d':
+        // Set image for 3D conversion
+        onSetImageSelection('convert-to-3d', contextMenu.imageId)
         break
       case 'download': {
         // Download the image/video file directly
@@ -201,6 +207,7 @@ export default function GeneratedVersions({
     if (selectedForView === imageId) badges.push({ label: 'View', color: 'bg-gray-500' })
     if (selectedForDifferentAngles === imageId) badges.push({ label: 'Different Angles', color: 'bg-purple-500' })
     if (selectedForVideo === imageId) badges.push({ label: 'Generate Video', color: 'bg-indigo-500' })
+    if (selectedForConvertTo3d === imageId) badges.push({ label: 'Convert to 3D', color: 'bg-teal-500' })
     if (selectedForClean === imageId) badges.push({ label: 'Clean', color: 'bg-cyan-500' })
     if (selectedBefore === imageId) badges.push({ label: 'Before', color: 'bg-blue-500' })
     if (selectedAfter === imageId) badges.push({ label: 'After', color: 'bg-green-500' })
@@ -218,6 +225,7 @@ export default function GeneratedVersions({
       added: 'Add Item',
       angled: 'Different Angles',
       video: 'Video',
+      '3d-object': '3D Object',
     }
     return labels[type]
   }
@@ -236,6 +244,7 @@ export default function GeneratedVersions({
                 ${selectedForView === image.id ? 'border-gray-500' : ''}
                 ${selectedForDifferentAngles === image.id ? 'border-purple-500' : ''}
                 ${selectedForVideo === image.id ? 'border-indigo-500' : ''}
+                ${selectedForConvertTo3d === image.id ? 'border-teal-500' : ''}
                 ${selectedForClean === image.id ? 'border-cyan-500' : ''}
                 ${selectedBefore === image.id ? 'border-blue-500' : ''}
                 ${selectedAfter === image.id ? 'border-green-500' : ''}
@@ -406,6 +415,13 @@ export default function GeneratedVersions({
             </button>
             <div className="border-t border-white/10 my-1" />
             <button
+              onClick={() => handleContextAction('convert-to-3d')}
+              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+            >
+              Convert to 3D
+            </button>
+            <div className="border-t border-white/10 my-1" />
+            <button
               onClick={() => handleContextAction('download')}
               className="w-full px-3 py-2 text-left text-sm text-cyan-400 hover:bg-white/10"
             >
@@ -442,6 +458,7 @@ export default function GeneratedVersions({
           selectedForView={selectedForView}
           selectedForDifferentAngles={selectedForDifferentAngles}
           selectedForVideo={selectedForVideo}
+          selectedForConvertTo3d={selectedForConvertTo3d}
         />
     </>
   )

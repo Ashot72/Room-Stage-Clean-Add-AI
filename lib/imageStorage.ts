@@ -1,10 +1,11 @@
 export interface StoredImage {
   id: string;
   url: string; // fal.storage URL
-  type: 'original' | 'cleaned' | 'staged' | 'reference' | 'added' | 'angled' | 'video';
+  type: 'original' | 'cleaned' | 'staged' | 'reference' | 'added' | 'angled' | 'video' | '3d-object';
   timestamp: number;
   videoUrl?: string; // URL of generated video (for type 'video')
-  sourceImageId?: string; // ID of source image used to generate video
+  glbUrl?: string; // URL of generated GLB file (for type '3d-object')
+  sourceImageId?: string; // ID of source image used to generate video or 3D object
   metadata?: {
     prompt?: string;
     selection?: Array<{
@@ -54,6 +55,9 @@ export function saveImage(image: Omit<StoredImage, 'id' | 'timestamp'>): StoredI
   console.log('[localStorage] Image saved:', storedImage.url);
   if (storedImage.type === 'video') {
     console.log('[localStorage] Video saved with videoUrl:', storedImage.videoUrl, 'sourceImageId:', storedImage.sourceImageId);
+  }
+  if (storedImage.type === '3d-object') {
+    console.log('[localStorage] 3D object saved with glbUrl:', storedImage.glbUrl, 'sourceImageId:', storedImage.sourceImageId);
   }
 
   return storedImage;
@@ -106,6 +110,7 @@ export interface SelectionState {
   selectedForView: string | null;
   selectedForDifferentAngles: string | null;
   selectedForVideo: string | null;
+  selectedForConvertTo3d: string | null;
 }
 
 export function saveSelections(selections: SelectionState): void {
@@ -129,6 +134,7 @@ export function loadSelections(): SelectionState {
       selectedForView: null,
       selectedForDifferentAngles: null,
       selectedForVideo: null,
+      selectedForConvertTo3d: null,
     };
   }
   
@@ -143,6 +149,7 @@ export function loadSelections(): SelectionState {
       selectedForView: null,
       selectedForDifferentAngles: null,
       selectedForVideo: null,
+      selectedForConvertTo3d: null,
     };
     // Ensure backward compatibility
     if (!selections.hasOwnProperty('selectedForAddItem')) {
@@ -157,6 +164,9 @@ export function loadSelections(): SelectionState {
     if (!selections.hasOwnProperty('selectedForVideo')) {
       selections.selectedForVideo = null;
     }
+    if (!selections.hasOwnProperty('selectedForConvertTo3d')) {
+      selections.selectedForConvertTo3d = null;
+    }
     console.log('[localStorage] Selections loaded:', selections);
     return selections;
   } catch (error) {
@@ -170,6 +180,7 @@ export function loadSelections(): SelectionState {
       selectedForView: null,
       selectedForDifferentAngles: null,
       selectedForVideo: null,
+      selectedForConvertTo3d: null,
     };
   }
 }

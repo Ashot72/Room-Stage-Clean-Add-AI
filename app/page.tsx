@@ -5,6 +5,9 @@ import ImageComparison from '@/components/ImageComparison'
 import Toolbar from '@/components/Toolbar'
 import CreativeAssistant from '@/components/CreativeAssistant'
 import AngleAssistant from '@/components/AngleAssistant'
+import PointPromptAssistant from '@/components/PointPromptAssistant'
+import PointPlacementImage from '@/components/PointPlacementImage'
+import ImageSelector from '@/components/ImageSelector'
 import GeneratedVersions from '@/components/GeneratedVersions'
 import VideoPlayer from '@/components/VideoPlayer'
 import { Upload, X, Type, MousePointer2 } from 'lucide-react'
@@ -24,12 +27,12 @@ type PolygonPoint = {
   y: number
 }
 
-type SelectionType = 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video'
-type ActionType = 'clean' | 'stage' | 'add-item' | 'different-angles' | 'generate-video'
+type SelectionType = 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d'
+type ActionType = 'clean' | 'stage' | 'add-item' | 'different-angles' | 'generate-video' | 'convert-to-3d'
 
 // Reusable Loading Overlay Component
 const LoadingOverlay = () => (
-  <div className="absolute inset-0 flex items-center justify-center z-50 bg-black/50">
+  <div className="fixed inset-0 flex items-center justify-center z-50 bg-black/50">
     <div className="flex flex-col items-center gap-4">
       <div className="w-12 h-12 border-4 border-white/20 border-t-white rounded-full animate-spin" />
       <p className="text-white/80 text-sm">Processing...</p>
@@ -89,12 +92,14 @@ export default function Home() {
     view: null as string | null,
     differentAngles: null as string | null,
     video: null as string | null,
+    convertTo3d: null as string | null,
   })
   const [prompts, setPrompts] = useState({
     clean: '',
     staging: '',
     addItem: '',
     video: '',
+    convertTo3d: '',
   })
   const [loadingState, setLoadingState] = useState({
     isLoading: false,
@@ -113,6 +118,8 @@ export default function Home() {
     elevation: 0,
     distance: 5,
   })
+  const [pointPrompts, setPointPrompts] = useState<Array<{x: number, y: number, label: 0|1}>>([])
+  const [pointMode, setPointMode] = useState<0|1>(1) // 1 = positive, 0 = negative
   const fileInputRef = useRef<HTMLInputElement>(null)
   const referenceImageInputRef = useRef<HTMLInputElement>(null)
 
@@ -133,9 +140,10 @@ export default function Home() {
     view: getImageUrl(selections.view),
     differentAngles: getImageUrl(selections.differentAngles),
     video: getImageUrl(selections.video),
+    convertTo3d: getImageUrl(selections.convertTo3d),
   }), [selections, storedImages])
 
-  const displayImageUrl = imageUrls.staging || imageUrls.addItem || imageUrls.clean || imageUrls.view || imageUrls.differentAngles || imageUrls.differentAngles
+  const displayImageUrl = imageUrls.staging || imageUrls.addItem || imageUrls.clean || imageUrls.view || imageUrls.differentAngles || imageUrls.convertTo3d
   const isComparisonMode = !!selections.before
 
   // Helper to handle API response
@@ -173,13 +181,52 @@ export default function Home() {
         selectedForView: storedImage.id, // Set view to the generated video
         selectedForDifferentAngles: selections.differentAngles,
         selectedForVideo: null, // Clear video generation selection
+        selectedForConvertTo3d: selections.convertTo3d,
       })
       
       // Clear video prompt
       setPrompts(prev => ({ ...prev, video: '' }))
+    } else if (action === 'convert-to-3d') {
+      // For 3D objects, save with glbUrl and sourceImageId (similar to video)
+      if (!data.glbUrl) {
+        console.error('No glbUrl in response data:', data)
+      }
+      const storedImage = saveImage({
+        url: data.imageUrl, // Original image URL
+        type: '3d-object',
+        glbUrl: data.glbUrl,
+        sourceImageId: originalImageId,
+        metadata: { prompt },
+      })
+      
+      setStoredImages(prev => [storedImage, ...prev])
+      
+      // After 3D generation, switch to view mode to show the 3D model
+      // Clear convertTo3d selection and set view selection instead
+      setSelections(prev => ({
+        ...prev,
+        convertTo3d: null, // Clear 3D conversion selection
+        view: storedImage.id, // Set to view mode to show the 3D model
+      }))
+      
+      // Save to localStorage
+      saveSelections({
+        selectedBefore: selections.before,
+        selectedAfter: selections.after,
+        selectedForClean: selections.clean,
+        selectedForStaging: selections.staging,
+        selectedForAddItem: selections.addItem,
+        selectedForView: storedImage.id, // Set view to the generated 3D object
+        selectedForDifferentAngles: selections.differentAngles,
+        selectedForVideo: selections.video,
+        selectedForConvertTo3d: null, // Clear 3D conversion selection
+      })
+      
+      // Clear point prompts
+      setPointPrompts([])
     } else {
       // For other actions, use the existing logic
-      const typeMap: Record<Exclude<ActionType, 'generate-video'>, 'cleaned' | 'staged' | 'added' | 'angled'> = {
+      const typeMap: Record<Exclude<ActionType, 'generate-video' | 'convert-to-3d'>, 'cleaned' | 'staged' | 'added' | 'angled'> = {
         'clean': 'cleaned' as const,
         'stage': 'staged' as const,
         'add-item': 'added' as const,
@@ -188,7 +235,7 @@ export default function Home() {
       
       const storedImage = saveImage({
         url: data.imageUrl,
-        type: typeMap[action as Exclude<ActionType, 'generate-video'>],
+        type: typeMap[action as Exclude<ActionType, 'generate-video' | 'convert-to-3d'>],
         metadata: { prompt, selection: selection || undefined },
       })
       
@@ -213,6 +260,7 @@ export default function Home() {
         selectedForView: selections.view,
         selectedForDifferentAngles: action === 'different-angles' ? null : selections.differentAngles,
         selectedForVideo: selections.video,
+        selectedForConvertTo3d: selections.convertTo3d,
       })
       
       // Clear prompt for add-item
@@ -241,6 +289,7 @@ export default function Home() {
       view: validateAndSet(savedSelections.selectedForView, images),
       differentAngles: validateAndSet(savedSelections.selectedForDifferentAngles, images),
       video: validateAndSet(savedSelections.selectedForVideo, images),
+      convertTo3d: validateAndSet(savedSelections.selectedForConvertTo3d, images),
     })
     
     // Auto-select first image as "View" if no selection exists
@@ -321,7 +370,8 @@ export default function Home() {
     prompt?: string, 
     selection?: PolygonPoint[] | null, 
     referenceImageUrl?: string | null,
-    angleParams?: { azimuth: number, elevation: number, distance: number }
+    angleParams?: { azimuth: number, elevation: number, distance: number },
+    pointPrompts?: Array<{x: number, y: number, label: 0|1}>
   ) => {
     setLoadingState({ isLoading: true, action, isUploading: false })
     setError(null)
@@ -348,6 +398,11 @@ export default function Home() {
         requestBody.zoom = angleParams.distance
       }
 
+      // Add point prompts for convert-to-3d action
+      if (action === 'convert-to-3d' && pointPrompts) {
+        requestBody.pointPrompts = pointPrompts
+      }
+
       const response = await fetch('/api/edit', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -364,6 +419,7 @@ export default function Home() {
                              action === 'stage' ? selections.staging : 
                              action === 'different-angles' ? selections.differentAngles :
                              action === 'generate-video' ? selections.video :
+                             action === 'convert-to-3d' ? selections.convertTo3d :
                              selections.addItem
 
       if (originalImageId) {
@@ -447,6 +503,19 @@ export default function Home() {
     callAPI('generate-video', imageToUse, prompts.video)
   }
 
+  const handleConvertTo3D = (points: Array<{x: number, y: number, label: 0|1}>, prompt: string) => {
+    const imageToUse = selections.convertTo3d ? imageUrls.convertTo3d : null
+    if (!imageToUse) {
+      setError('Please select an image for 3D conversion first')
+      return
+    }
+    if (points.filter(p => p.label === 1).length === 0) {
+      setError('Please add at least one positive point on the object')
+      return
+    }
+    callAPI('convert-to-3d', imageToUse, prompt, undefined, undefined, undefined, points)
+  }
+
   // Delete image handler
   const handleDeleteImage = (imageId: string) => {
     const imageToDelete = getImageById(imageId)
@@ -468,6 +537,7 @@ export default function Home() {
         view: selections.view === imageId ? null : selections.view,
         differentAngles: selections.differentAngles === imageId ? null : selections.differentAngles,
         video: selections.video === imageId ? null : selections.video,
+        convertTo3d: selections.convertTo3d === imageId ? null : selections.convertTo3d,
       }
       
       setSelections(newSelections)
@@ -480,6 +550,7 @@ export default function Home() {
         selectedForView: newSelections.view,
         selectedForDifferentAngles: newSelections.differentAngles,
         selectedForVideo: newSelections.video,
+        selectedForConvertTo3d: newSelections.convertTo3d,
       })
     }
   }
@@ -494,6 +565,7 @@ export default function Home() {
                          selections.after ? 'after' :
                          selections.differentAngles ? 'different-angles' :
                          selections.video ? 'video' :
+                         selections.convertTo3d ? 'convert-to-3d' :
                          null
     
     // Clear polygon when switching states
@@ -501,22 +573,25 @@ export default function Home() {
       setSelection(null)
       setSelectionMode(type === 'add-item' || type === 'clean')
       
-      // Clear prompts when switching between different selection types
-      const promptTypes = ['clean', 'staging', 'add-item', 'video']
-      if (promptTypes.includes(currentState) && promptTypes.includes(type) && currentState !== type) {
-        // Clear the previous prompt type
-        if (currentState === 'clean') {
-          setPrompts(prev => ({ ...prev, clean: '' }))
-        } else if (currentState === 'staging') {
-          setPrompts(prev => ({ ...prev, staging: '' }))
-        } else if (currentState === 'add-item') {
-          setPrompts(prev => ({ ...prev, addItem: '' }))
-        } else if (currentState === 'video') {
-          setPrompts(prev => ({ ...prev, video: '' }))
-        }
+      // Clear prompts for the current state before switching
+      if (currentState === 'clean') {
+        setPrompts(prev => ({ ...prev, clean: '' }))
+      } else if (currentState === 'staging') {
+        setPrompts(prev => ({ ...prev, staging: '' }))
+      } else if (currentState === 'add-item') {
+        setPrompts(prev => ({ ...prev, addItem: '' }))
+      } else if (currentState === 'video') {
+        setPrompts(prev => ({ ...prev, video: '' }))
+      } else if (currentState === 'convert-to-3d') {
+        setPrompts(prev => ({ ...prev, convertTo3d: '' }))
+        setPointPrompts([])
       }
     } else if (currentState !== null && currentState === type) {
       setSelection(null)
+      if (type === 'convert-to-3d') {
+        setPointPrompts([])
+        setPrompts(prev => ({ ...prev, convertTo3d: '' }))
+      }
     }
     
     // Create new selections object
@@ -529,6 +604,7 @@ export default function Home() {
       view: type === 'view' ? imageId : null,
       differentAngles: type === 'different-angles' ? imageId : null,
       video: type === 'video' ? imageId : null,
+      convertTo3d: type === 'convert-to-3d' ? imageId : null,
     }
     
     // Handle mutual exclusivity for before/after
@@ -549,6 +625,7 @@ export default function Home() {
       selectedForView: newSelections.view,
       selectedForDifferentAngles: newSelections.differentAngles,
       selectedForVideo: newSelections.video,
+      selectedForConvertTo3d: newSelections.convertTo3d,
     })
   }
 
@@ -576,6 +653,31 @@ export default function Home() {
   const canStage = !!selections.staging && !!prompts.staging.trim()
   const canDifferentAngles = !!selections.differentAngles
   const canGenerateVideo = !!selections.video && !!prompts.video.trim()
+  const canConvertTo3D = !!selections.convertTo3d && pointPrompts.filter(p => p.label === 1).length > 0 && !!prompts.convertTo3d.trim()
+
+  const handleConvertTo3DClick = () => {
+    if (!selections.convertTo3d) {
+      // If no image is selected, find the first available image
+      if (storedImages.length > 0) {
+        setImageSelection('convert-to-3d', storedImages[0].id)
+      } else {
+        setError('Please upload an image first')
+      }
+    } else {
+      // If image is already selected and points are placed, generate 3D model
+      if (pointPrompts.filter(p => p.label === 1).length === 0) {
+        setError('Please add at least one positive point on the object')
+        return
+      }
+      const imageToUse = imageUrls.convertTo3d
+      if (!imageToUse) {
+        setError('Please select an image for 3D conversion first')
+        return
+      }
+      const prompt = prompts.convertTo3d || 'object'
+      callAPI('convert-to-3d', imageToUse, prompt, undefined, undefined, undefined, pointPrompts)
+    }
+  }
 
 
   return (
@@ -586,16 +688,18 @@ export default function Home() {
         onStage={handleStage}
         onDifferentAngles={handleDifferentAngles}
         onGenerateVideo={handleGenerateVideo}
+        onConvertTo3D={handleConvertTo3DClick}
         canClean={canClean}
         canAddItem={canAddItem}
         canStage={canStage}
         canDifferentAngles={canDifferentAngles}
         canGenerateVideo={canGenerateVideo}
+        canConvertTo3D={canConvertTo3D}
         loading={loadingState.isLoading}
       />
 
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <header className={`h-16 border-b border-white/10 flex items-center justify-between px-6 transition-all duration-300 ${selections.staging || selections.differentAngles ? 'pr-[340px]' : 'pr-6'}`}>
+        <header className={`h-16 border-b border-white/10 flex items-center justify-between px-6 transition-all duration-300 ${selections.staging || selections.differentAngles || selections.convertTo3d ? 'pr-[340px]' : 'pr-6'}`}>
           <div className="flex items-center gap-2">
             <div className="w-6 h-6 rounded-sm flex items-center justify-center bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 shadow-lg">
               <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -647,36 +751,54 @@ export default function Home() {
         </header>
 
         {displayImageUrl && !selectionMode && selections.clean && !selections.addItem && !selections.view && (
-          <PromptInput
-            label="Remove objects:"
-            value={prompts.clean}
-            onChange={(value) => setPrompts(prev => ({ ...prev, clean: value }))}
-            onClear={() => setPrompts(prev => ({ ...prev, clean: '' }))}
-            placeholder="e.g., furniture, clutter, decor, or specific items..."
-            onEnter={canClean ? handleClean : undefined}
-          />
+          <div className={`${selections.staging || selections.differentAngles || selections.convertTo3d ? 'pr-[340px]' : ''}`}>
+            <PromptInput
+              label="Remove objects:"
+              value={prompts.clean}
+              onChange={(value) => setPrompts(prev => ({ ...prev, clean: value }))}
+              onClear={() => setPrompts(prev => ({ ...prev, clean: '' }))}
+              placeholder="e.g., furniture, clutter, decor, or specific items..."
+              onEnter={canClean ? handleClean : undefined}
+            />
+          </div>
         )}
 
         {displayImageUrl && selections.staging && !selections.clean && !selections.addItem && !selections.view && !selections.video && (
-          <PromptInput
-            label="Staging style:"
-            value={prompts.staging}
-            onChange={handlePromptChange}
-            onClear={() => setPrompts(prev => ({ ...prev, staging: '' }))}
-            placeholder="e.g., modern, industrial, scandinavian, boho..."
-            onEnter={canStage ? handleStage : undefined}
-          />
+          <div className={`${selections.staging || selections.differentAngles || selections.convertTo3d ? 'pr-[340px]' : ''}`}>
+            <PromptInput
+              label="Staging style:"
+              value={prompts.staging}
+              onChange={handlePromptChange}
+              onClear={() => setPrompts(prev => ({ ...prev, staging: '' }))}
+              placeholder="e.g., modern, industrial, scandinavian, boho..."
+              onEnter={canStage ? handleStage : undefined}
+            />
+          </div>
         )}
 
-        {selections.video && !selections.clean && !selections.addItem && !selections.view && !selections.staging && (
-          <PromptInput
-            label="Video prompt:"
-            value={prompts.video}
-            onChange={(value) => setPrompts(prev => ({ ...prev, video: value }))}
-            onClear={() => setPrompts(prev => ({ ...prev, video: '' }))}
-            placeholder="e.g., room rotates 360 degrees, slow rotation showing all angles..."
-            onEnter={canGenerateVideo ? handleGenerateVideo : undefined}
-          />
+        {selections.video && !selections.clean && !selections.addItem && !selections.view && !selections.staging && !selections.convertTo3d && (
+          <div className={`${selections.staging || selections.differentAngles || selections.convertTo3d ? 'pr-[340px]' : ''}`}>
+            <PromptInput
+              label="Video prompt:"
+              value={prompts.video}
+              onChange={(value) => setPrompts(prev => ({ ...prev, video: value }))}
+              onClear={() => setPrompts(prev => ({ ...prev, video: '' }))}
+              placeholder="e.g., room rotates 360 degrees, slow rotation showing all angles..."
+              onEnter={canGenerateVideo ? handleGenerateVideo : undefined}
+            />
+          </div>
+        )}
+
+        {selections.convertTo3d && !selections.clean && !selections.addItem && !selections.view && !selections.staging && !selections.video && (
+          <div className={`${selections.staging || selections.differentAngles || selections.convertTo3d ? 'pr-[340px]' : ''}`}>
+            <PromptInput
+              label="Object description:"
+              value={prompts.convertTo3d}
+              onChange={(value) => setPrompts(prev => ({ ...prev, convertTo3d: value }))}
+              onClear={() => setPrompts(prev => ({ ...prev, convertTo3d: '' }))}
+              placeholder="e.g., furniture, chair, object"
+            />
+          </div>
         )}
 
         {selections.addItem && imageUrls.addItem && (
@@ -801,6 +923,20 @@ export default function Home() {
                       ? getImageUrl(viewImage.sourceImageId) 
                       : imageUrls.view
                     return <VideoPlayer videoUrl={viewImage.videoUrl} sourceImageUrl={sourceImageUrl || undefined} />
+                  } else if (viewImage?.type === '3d-object' && viewImage?.glbUrl) {
+                    // Show 3D model viewer when viewing a 3D object
+                    return (
+                      <div className="relative w-full h-full overflow-hidden bg-neutral-900">
+                        {/* @ts-ignore - model-viewer types not installed yet */}
+                        <model-viewer
+                          src={viewImage.glbUrl}
+                          alt="3D Model"
+                          camera-controls
+                          auto-rotate
+                          style={{ width: '100%', height: '100%' }}
+                        />
+                      </div>
+                    )
                   } else {
                     // Show image normally for regular view
                     return (
@@ -821,14 +957,46 @@ export default function Home() {
             ) : displayImageUrl ? (
               <div className="relative w-full h-full overflow-y-auto overflow-x-hidden bg-black">
                 {loadingState.isLoading && <LoadingOverlay />}
-                <div className="flex justify-center">
-                  <img
-                    src={displayImageUrl}
-                    alt="Image"
-                    className="max-w-full h-auto object-contain"
-                    style={{ display: 'block' }}
+                {selections.addItem && imageUrls.addItem ? (
+                  // Polygon selection mode for add-item
+                  <ImageSelector
+                    imageUrl={imageUrls.addItem}
+                    onSelectionChange={setSelection}
+                    disabled={loadingState.isLoading}
+                    showProcessButton={true}
+                    onProcess={handleAddItem}
+                    isProcessing={loadingState.isLoading && loadingState.action === 'add-item'}
                   />
-                </div>
+                ) : selections.clean && imageUrls.clean && selectionMode ? (
+                  // Polygon selection mode for clean
+                  <ImageSelector
+                    imageUrl={imageUrls.clean}
+                    onSelectionChange={setSelection}
+                    disabled={loadingState.isLoading}
+                    showProcessButton={true}
+                    onProcess={handleClean}
+                    isProcessing={loadingState.isLoading && loadingState.action === 'clean'}
+                  />
+                ) : selections.convertTo3d ? (
+                  // Point placement mode for 3D conversion
+                  <div className="relative flex justify-center">
+                    <PointPlacementImage
+                      imageUrl={displayImageUrl}
+                      points={pointPrompts}
+                      onPointsChange={setPointPrompts}
+                      currentMode={pointMode}
+                    />
+                  </div>
+                ) : (
+                  <div className="relative flex justify-center">
+                    <img
+                      src={displayImageUrl}
+                      alt="Image"
+                      className="max-w-full h-auto object-contain"
+                      style={{ display: 'block' }}
+                    />
+                  </div>
+                )}
               </div>
             ) : imageUrls.before ? (
               <div className="relative w-full h-full overflow-y-auto overflow-x-hidden bg-black">
@@ -890,6 +1058,7 @@ export default function Home() {
             selectedForView={selections.view}
             selectedForDifferentAngles={selections.differentAngles}
             selectedForVideo={selections.video}
+            selectedForConvertTo3d={selections.convertTo3d}
             onSetImageSelection={setImageSelection}
             onDelete={handleDeleteImage}
           />
@@ -902,7 +1071,7 @@ export default function Home() {
         className={`
           fixed right-0 top-0 h-full z-40
           transition-all duration-300 ease-in-out
-          ${selections.staging && !selections.differentAngles
+          ${selections.staging && !selections.differentAngles && !selections.convertTo3d
             ? 'translate-x-0 opacity-100'
             : 'translate-x-full opacity-0 pointer-events-none'
           }
@@ -921,7 +1090,7 @@ export default function Home() {
         className={`
           fixed right-0 top-0 h-full z-40
           transition-all duration-300 ease-in-out
-          ${selections.differentAngles
+          ${selections.differentAngles && !selections.convertTo3d
             ? 'translate-x-0 opacity-100'
             : 'translate-x-full opacity-0 pointer-events-none'
           }
@@ -934,6 +1103,26 @@ export default function Home() {
           azimuth={angleSettings.azimuth}
           elevation={angleSettings.elevation}
           distance={angleSettings.distance}
+        />
+      </div>
+
+      {/* Point Prompt Assistant */}
+      <div
+        className={`
+          fixed right-0 top-0 h-full z-40
+          transition-all duration-300 ease-in-out
+          ${selections.convertTo3d
+            ? 'translate-x-0 opacity-100'
+            : 'translate-x-full opacity-0 pointer-events-none'
+          }
+        `}
+      >
+        <PointPromptAssistant
+          points={pointPrompts}
+          onPointsChange={setPointPrompts}
+          onModeChange={setPointMode}
+          currentMode={pointMode}
+          isProcessing={loadingState.isLoading && loadingState.action === 'convert-to-3d'}
         />
       </div>
     </main>

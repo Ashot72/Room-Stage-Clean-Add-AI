@@ -54,7 +54,7 @@ export async function POST(req: Request) {
       );
     }
 
-    const { action, imageUrl, prompt, selection, referenceImageUrl, horizontal_angle, vertical_angle, zoom, duration } = await req.json();
+    const { action, imageUrl, prompt, selection, referenceImageUrl, horizontal_angle, vertical_angle, zoom, duration, pointPrompts } = await req.json();
 
     if (!imageUrl) {
       return Response.json({ error: "Image URL is required" }, { status: 400 });
@@ -207,6 +207,49 @@ export async function POST(req: Request) {
         return Response.json({ 
           imageUrl: imageUrl, // Original image URL
           videoUrl: videoUrl 
+        });
+
+      case "convert-to-3d":
+        // Convert object to 3D GLB model using SAM-3
+        if (!pointPrompts || !Array.isArray(pointPrompts) || pointPrompts.length === 0) {
+          return Response.json({ error: "At least one point prompt is required for 3D conversion" }, { status: 400 });
+        }
+
+        // Fetch image to get dimensions for coordinate conversion
+        const imageResponse = await fetch(imageUrl);
+        const imageBuffer = Buffer.from(await imageResponse.arrayBuffer());
+        const imageMetadata = await sharp(imageBuffer).metadata();
+        const imageWidth = imageMetadata.width!;
+        const imageHeight = imageMetadata.height!;
+
+        // Convert normalized coordinates (0-1) to pixel coordinates
+        const pixelPointPrompts = pointPrompts.map((point: {x: number, y: number, label: 0|1}) => ({
+          x: Math.round(point.x * imageWidth),
+          y: Math.round(point.y * imageHeight),
+          label: point.label as 0 | 1  // Type assertion for API compatibility
+        }));
+
+        result = await fal.subscribe("fal-ai/sam-3/3d-objects", {
+          input: {
+            image_url: imageUrl,
+            prompt: prompt || "object",
+            point_prompts: pixelPointPrompts as any, // Type casting - API accepts numeric labels but TS types expect strings
+            export_textured_glb: true
+          } as any // Type casting for export_textured_glb which may not be in TS types yet
+        });
+
+        // Handle both result.data and result directly
+        const glbData: any = result.data || result;
+        const glbUrl = glbData.model_glb?.url;
+        
+        if (!glbUrl) {
+          return Response.json({ error: "Failed to extract GLB URL from response" }, { status: 500 });
+        }
+
+        // Return both original image URL and generated GLB URL
+        return Response.json({ 
+          imageUrl: imageUrl, // Original image URL
+          glbUrl: glbUrl 
         });
 
       default:

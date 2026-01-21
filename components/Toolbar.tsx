@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, Sofa, Plus, Camera, Video } from 'lucide-react'
+import { Sparkles, Sofa, Plus, Camera, Video, Box } from 'lucide-react'
 
 interface ToolbarProps {
   onClean: () => void
@@ -8,11 +8,13 @@ interface ToolbarProps {
   onStage: () => void
   onDifferentAngles: () => void
   onGenerateVideo: () => void
+  onConvertTo3D: () => void
   canClean: boolean
   canAddItem: boolean
   canStage: boolean
   canDifferentAngles: boolean
   canGenerateVideo: boolean
+  canConvertTo3D: boolean
   loading?: boolean
 }
 
@@ -22,11 +24,13 @@ export default function Toolbar({
   onStage,
   onDifferentAngles,
   onGenerateVideo,
+  onConvertTo3D,
   canClean,
   canAddItem,
   canStage,
   canDifferentAngles,
   canGenerateVideo,
+  canConvertTo3D,
   loading = false 
 }: ToolbarProps) {
   const buttons = [
@@ -64,6 +68,13 @@ export default function Toolbar({
       icon: Video,
       onClick: onGenerateVideo,
       enabled: canGenerateVideo && !loading,
+    },
+    {
+      id: 'convert-to-3d',
+      label: 'Convert to 3D',
+      icon: Box,
+      onClick: onConvertTo3D,
+      enabled: canConvertTo3D && !loading,
     },
   ]
 

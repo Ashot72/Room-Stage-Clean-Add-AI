@@ -6,8 +6,11 @@ The app is a real estate image editing application that uses advanced AI models 
 
 Users can generate new views from any camera angle and create dynamic videos from static images. It offers full control over azimuth (horizontal rotation), elevation (vertical angle), and zoom (camera distance), allowing realistic visualizations from floor-level, eye-level, or top-down perspectives. Videos can then be generated with smooth motion, perfect for virtual walkthroughs, interior design, or real estate presentations.
 
----
+#### 🏠 Enhanced with AI Interior 3D Visualizer
 
+Turn your 2D interior photos into interactive 3D models with AI-powered tools! Perfect for real estate listings, interior design mockups, and furniture visualization.
+
+---
 ### Features 🚀
 
 #### 1. Upload & Manage Images 📸
@@ -39,12 +42,19 @@ Users can generate new views from any camera angle and create dynamic videos fro
 - Supports polygon selection for precise placement.
 
 #### 5. Multiple Angles & Camera Control 🔄📐
-Generate new views of a room from different camera positions using a single image.  
-Control **azimuth** (horizontal rotation), **elevation** (vertical angle), and **zoom** (camera distance) to visualize spaces from floor-level, eye-level, or top-down perspectives.
+- Generate new views of a room from different camera positions using a single image.  
+- Control **azimuth** (horizontal rotation), **elevation** (vertical angle), and **zoom** (camera distance) to visualize spaces from floor-level, eye-level, or top-down perspectives.
 
 #### 6. Video Generation 🎥✨
-Convert static room images into smooth, immersive videos.  
-Use simple text prompts such as *“360-degree rotation”* or *“slow pan across the room”*, and select a duration of 5 or 10 seconds to create realistic walkthroughs, virtual tours, or dynamic presentations.
+- Convert static room images into smooth, immersive videos.  
+- Use simple text prompts such as *“360-degree rotation”* or *“slow pan across the room”*, and select a duration of 5 or 10 seconds to create realistic walkthroughs, virtual tours, or dynamic presentations.
+
+#### 7. AI Interior 3D Visualizer 🏠
+- Turn your 2D interior photos into **interactive 3D models** with AI-powered tools.  
+- Perfect for **real estate listings, interior design mockups, and furniture visualization**.  
+- Supports point-based selection (positive/negative points) to include or exclude objects.  
+- Generates fully textured GLB files that can be viewed and rotated in Google’s `<model-viewer>`.
+
 
 ---
 
@@ -58,6 +68,7 @@ Use simple text prompts such as *“360-degree rotation”* or *“slow pan acro
 - [Fill Model](https://fal.ai/models/fal-ai/flux-pro/v1/fill) 
 - [Multiple Angles Model](https://fal.ai/models/fal-ai/qwen-image-edit-2511-multiple-angles) 
 - [Image to Video Model](https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video)  
+- [3D Objects](https://fal.ai/models/fal-ai/sam-3/3d-objects) 
 ---
 
 #### 🚀 Clone and Run
@@ -84,6 +95,8 @@ npm run dev
 
 - Open the **Run** view (`View → Run` or `Ctrl+Shift+D`) to access the debug configuration
 
-📺 **Video: (Cleaning, Staging & Adding Items)** [Watch on YouTube](https://youtu.be/yqsgr9Z5MJo)
+📺 **Video: (Cleaning, Staging & Adding Items)** [Watch on YouTube](https://youtu.be/yqsgr9Z5MJo) 
 
 📺 **Video: (Multiple Angles and Video Generation)** [Watch on YouTube](https://youtu.be/DKne0nvZxJA) 
+
+📺 **Video: (3D Interiors from Photos with)** [Watch on YouTube](https://youtu.be/NE8awddiMhM) 
