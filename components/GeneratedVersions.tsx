@@ -147,12 +147,23 @@ export default function GeneratedVersions({
         onSetImageSelection('convert-to-3d', contextMenu.imageId)
         break
       case 'download': {
-        // Download the image/video file directly
+        // Download the image/video/GLB file directly
         const image = images.find(img => img.id === contextMenu.imageId)
         if (image) {
-          // For videos, download the video file; for others, download the image
-          const fileUrl = image.type === 'video' && image.videoUrl ? image.videoUrl : image.url
-          const fileType = image.type === 'video' ? 'video' : 'image'
+          // For 3D objects, download the GLB file; for videos, download the video file; for others, download the image
+          let fileUrl: string
+          let fileType: string
+          
+          if (image.type === '3d-object' && image.glbUrl) {
+            fileUrl = image.glbUrl
+            fileType = '3d-object'
+          } else if (image.type === 'video' && image.videoUrl) {
+            fileUrl = image.videoUrl
+            fileType = 'video'
+          } else {
+            fileUrl = image.url
+            fileType = 'image'
+          }
           
           // Fetch the file and create a blob URL for download (handles CORS)
           fetch(fileUrl)
@@ -167,7 +178,8 @@ export default function GeneratedVersions({
               const link = document.createElement('a')
               link.href = url
               // Determine file extension from URL
-              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || (fileType === 'video' ? 'mp4' : 'png')
+              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || 
+                (fileType === 'video' ? 'mp4' : fileType === '3d-object' ? 'glb' : 'png')
               link.download = `${fileType}-${image.id}.${extension}`
               link.style.display = 'none'
               document.body.appendChild(link)
@@ -180,7 +192,8 @@ export default function GeneratedVersions({
               // Fallback: try direct download
               const link = document.createElement('a')
               link.href = fileUrl
-              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || (fileType === 'video' ? 'mp4' : 'png')
+              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || 
+                (fileType === 'video' ? 'mp4' : fileType === '3d-object' ? 'glb' : 'png')
               link.download = `${fileType}-${image.id}.${extension}`
               link.target = '_blank'
               link.style.display = 'none'
