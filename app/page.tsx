@@ -120,6 +120,7 @@ export default function Home() {
   })
   const [pointPrompts, setPointPrompts] = useState<Array<{x: number, y: number, label: 0|1}>>([])
   const [pointMode, setPointMode] = useState<0|1>(1) // 1 = positive, 0 = negative
+  const [canvaSelectedImageId, setCanvaSelectedImageId] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const referenceImageInputRef = useRef<HTMLInputElement>(null)
 
@@ -503,19 +504,6 @@ export default function Home() {
     callAPI('generate-video', imageToUse, prompts.video)
   }
 
-  const handleConvertTo3D = (points: Array<{x: number, y: number, label: 0|1}>, prompt: string) => {
-    const imageToUse = selections.convertTo3d ? imageUrls.convertTo3d : null
-    if (!imageToUse) {
-      setError('Please select an image for 3D conversion first')
-      return
-    }
-    if (points.filter(p => p.label === 1).length === 0) {
-      setError('Please add at least one positive point on the object')
-      return
-    }
-    callAPI('convert-to-3d', imageToUse, prompt, undefined, undefined, undefined, points)
-  }
-
   // Delete image handler
   const handleDeleteImage = (imageId: string) => {
     const imageToDelete = getImageById(imageId)
@@ -655,6 +643,58 @@ export default function Home() {
   const canGenerateVideo = !!selections.video && !!prompts.video.trim()
   const canConvertTo3D = !!selections.convertTo3d && pointPrompts.filter(p => p.label === 1).length > 0 && !!prompts.convertTo3d.trim()
 
+  const canvaTargetImage = useMemo(() => {
+    return canvaSelectedImageId ? getImageById(canvaSelectedImageId) : null
+  }, [canvaSelectedImageId, storedImages])
+
+  const canEditInCanva = !!(
+    canvaSelectedImageId &&
+    canvaTargetImage?.url &&
+    canvaTargetImage.type !== 'video' &&
+    canvaTargetImage.type !== '3d-object' &&
+    selections.view === canvaSelectedImageId &&
+    !selections.staging &&
+    !selections.clean &&
+    !selections.addItem &&
+    !selections.differentAngles &&
+    !selections.video &&
+    !selections.convertTo3d
+  )
+
+  const generateCorrelationState = () => {
+    if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
+      return (crypto as Crypto).randomUUID().replace(/-/g, '')
+    }
+    return `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 10)}`
+  }
+
+  const handleEnableCanvaEditing = (imageId: string) => {
+    const image = getImageById(imageId)
+    if (!image || image.type === 'video' || image.type === '3d-object') {
+      setError('Please select an image (not video/3D) to edit in Canva')
+      return
+    }
+    // Set the image to View mode (add to stage) like the View action
+    setImageSelection('view', imageId)
+    setCanvaSelectedImageId(imageId)
+  }
+
+  const handleEditInCanva = () => {
+    if (!canvaTargetImage) {
+      setError('Please select an image (not video/3D) to edit in Canva')
+      return
+    }
+
+    try {
+      const correlationState = generateCorrelationState()
+      localStorage.setItem(`canva_corr_${correlationState}`, canvaTargetImage.id)
+      const launchUrl = `/canva/launch?corr=${encodeURIComponent(correlationState)}&src=${encodeURIComponent(canvaTargetImage.id)}&img=${encodeURIComponent(canvaTargetImage.url)}`
+      window.location.href = launchUrl
+    } catch (e: any) {
+      setError(e?.message || 'Failed to open Canva')
+    }
+  }
+
   const handleConvertTo3DClick = () => {
     if (!selections.convertTo3d) {
       // If no image is selected, find the first available image
@@ -679,7 +719,6 @@ export default function Home() {
     }
   }
 
-
   return (
     <main className="h-screen w-screen flex bg-[#0a0a0a] text-white overflow-hidden">
       <Toolbar
@@ -689,12 +728,14 @@ export default function Home() {
         onDifferentAngles={handleDifferentAngles}
         onGenerateVideo={handleGenerateVideo}
         onConvertTo3D={handleConvertTo3DClick}
+        onEditInCanva={handleEditInCanva}
         canClean={canClean}
         canAddItem={canAddItem}
         canStage={canStage}
         canDifferentAngles={canDifferentAngles}
         canGenerateVideo={canGenerateVideo}
         canConvertTo3D={canConvertTo3D}
+        canEditInCanva={canEditInCanva}
         loading={loadingState.isLoading}
       />
 
@@ -712,6 +753,7 @@ export default function Home() {
           {storedImages.length > 0 && (
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => fileInputRef.current?.click()}
                 className="px-3 py-1.5 rounded text-xs font-medium transition-colors bg-white/10 text-white/60 hover:bg-white/15 flex items-center gap-2"
                 title="Upload another image"
@@ -1061,6 +1103,7 @@ export default function Home() {
             selectedForConvertTo3d={selections.convertTo3d}
             onSetImageSelection={setImageSelection}
             onDelete={handleDeleteImage}
+            onEnableCanvaEditing={handleEnableCanvaEditing}
           />
           </div>
         </div>
@@ -1122,7 +1165,6 @@ export default function Home() {
           onPointsChange={setPointPrompts}
           onModeChange={setPointMode}
           currentMode={pointMode}
-          isProcessing={loadingState.isLoading && loadingState.action === 'convert-to-3d'}
         />
       </div>
     </main>

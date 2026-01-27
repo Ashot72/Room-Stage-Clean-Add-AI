@@ -13,7 +13,6 @@ interface PointPromptAssistantProps {
   onPointsChange: (points: PointPrompt[]) => void
   onModeChange: (mode: 0 | 1) => void
   currentMode: 0 | 1
-  isProcessing?: boolean
 }
 
 export default function PointPromptAssistant({
@@ -21,7 +20,6 @@ export default function PointPromptAssistant({
   onPointsChange,
   onModeChange,
   currentMode,
-  isProcessing = false,
 }: PointPromptAssistantProps) {
   const removePoint = (index: number) => {
     onPointsChange(points.filter((_, i) => i !== index))

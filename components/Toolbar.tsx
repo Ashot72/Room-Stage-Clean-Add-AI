@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, Sofa, Plus, Camera, Video, Box } from 'lucide-react'
+import { Sparkles, Sofa, Plus, Camera, Video, Box, Edit3 } from 'lucide-react'
 
 interface ToolbarProps {
   onClean: () => void
@@ -9,12 +9,14 @@ interface ToolbarProps {
   onDifferentAngles: () => void
   onGenerateVideo: () => void
   onConvertTo3D: () => void
+  onEditInCanva: () => void
   canClean: boolean
   canAddItem: boolean
   canStage: boolean
   canDifferentAngles: boolean
   canGenerateVideo: boolean
   canConvertTo3D: boolean
+  canEditInCanva: boolean
   loading?: boolean
 }
 
@@ -25,12 +27,14 @@ export default function Toolbar({
   onDifferentAngles,
   onGenerateVideo,
   onConvertTo3D,
+  onEditInCanva,
   canClean,
   canAddItem,
   canStage,
   canDifferentAngles,
   canGenerateVideo,
   canConvertTo3D,
+  canEditInCanva,
   loading = false 
 }: ToolbarProps) {
   const buttons = [
@@ -75,6 +79,13 @@ export default function Toolbar({
       icon: Box,
       onClick: onConvertTo3D,
       enabled: canConvertTo3D && !loading,
+    },
+    {
+      id: 'edit-in-canva',
+      label: 'Edit in Canva',
+      icon: Edit3,
+      onClick: onEditInCanva,
+      enabled: canEditInCanva && !loading,
     },
   ]
 

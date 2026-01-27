@@ -10,6 +10,9 @@ Users can generate new views from any camera angle and create dynamic videos fro
 
 Turn your 2D interior photos into interactive 3D models with AI-powered tools! Perfect for real estate listings, interior design mockups, and furniture visualization.
 
+#### ✨Enhanced with Canva-Powered Editing  
+Users can open images directly in Canva from the app, apply AI-powered edits such as object removal, touch-ups, and return the results seamlessly. Original image format, resolution, and quality are preserved, and a Before/After comparison is generated automatically. This allows realistic visualizations for real estate listings, interior design mockups, and visual content creation, all without leaving the app context.
+
 ---
 ### Features 🚀
 
@@ -55,6 +58,13 @@ Turn your 2D interior photos into interactive 3D models with AI-powered tools! P
 - Supports point-based selection (positive/negative points) to include or exclude objects.  
 - Generates fully textured GLB files that can be viewed and rotated in Google’s `<model-viewer>`.
 
+#### 8. Edit-in-Canva Workflow
+
+- Edit images seamlessly without leaving the app  
+- Access Canva’s AI-powered design and object removal tools
+- Maintain original image quality, format, and resolution 
+- Automatically generate Before / After comparisons
+- Securely integrated via OAuth authentication 
 
 ---
 
@@ -69,6 +79,7 @@ Turn your 2D interior photos into interactive 3D models with AI-powered tools! P
 - [Multiple Angles Model](https://fal.ai/models/fal-ai/qwen-image-edit-2511-multiple-angles) 
 - [Image to Video Model](https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video)  
 - [3D Objects](https://fal.ai/models/fal-ai/sam-3/3d-objects) 
+- [Canva](https://www.canva.com/) 
 ---
 
 #### 🚀 Clone and Run
@@ -100,3 +111,5 @@ npm run dev
 📺 **Video: (Multiple Angles and Video Generation)** [Watch on YouTube](https://youtu.be/DKne0nvZxJA) 
 
 📺 **Video: (3D Interiors from Photos with)** [Watch on YouTube](https://youtu.be/NE8awddiMhM) 
+
+📺 **Video: (Canva-Powered Image Editing)** [Watch on YouTube](https://youtu.be/eNKE2FYYdGM) 

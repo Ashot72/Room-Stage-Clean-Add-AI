@@ -55,3 +55,14 @@ a {
   scrollbar-gutter: stable;
 }
 
+/* High-quality image rendering for photos */
+img {
+  image-rendering: auto;
+  -ms-interpolation-mode: bicubic;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  -webkit-transform: translateZ(0);
+  transform: translateZ(0);
+  -webkit-font-smoothing: antialiased;
+}
+

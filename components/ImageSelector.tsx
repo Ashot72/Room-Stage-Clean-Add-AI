@@ -30,7 +30,6 @@ export default function ImageSelector({
   const [hoverPoint, setHoverPoint] = useState<{ x: number; y: number } | null>(null)
   const containerRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [imageSize, setImageSize] = useState<{ width: number; height: number } | null>(null)
   const [imageRect, setImageRect] = useState<DOMRect | null>(null)
   const [labelPosition, setLabelPosition] = useState<{ top: number; right: number } | null>(null)
 
@@ -50,17 +49,6 @@ export default function ImageSelector({
     setHoverPoint(null)
     onSelectionChange(null)
   }, [imageUrl, onSelectionChange])
-
-  // Load image to get actual dimensions
-  useEffect(() => {
-    if (!imageUrl) return
-
-    const img = new window.Image()
-    img.onload = () => {
-      setImageSize({ width: img.width, height: img.height })
-    }
-    img.src = imageUrl
-  }, [imageUrl])
 
   // Update image rect and label position on scroll/resize
   useEffect(() => {

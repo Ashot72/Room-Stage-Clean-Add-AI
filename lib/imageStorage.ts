@@ -1,17 +1,20 @@
 export interface StoredImage {
   id: string;
   url: string; // fal.storage URL
-  type: 'original' | 'cleaned' | 'staged' | 'reference' | 'added' | 'angled' | 'video' | '3d-object';
+  type: 'original' | 'cleaned' | 'staged' | 'reference' | 'added' | 'angled' | 'video' | '3d-object' | 'canva';
   timestamp: number;
   videoUrl?: string; // URL of generated video (for type 'video')
   glbUrl?: string; // URL of generated GLB file (for type '3d-object')
-  sourceImageId?: string; // ID of source image used to generate video or 3D object
+  sourceImageId?: string; // ID of source image used to generate derived content
   metadata?: {
     prompt?: string;
     selection?: Array<{
       x: number;
       y: number;
     }>;
+    // Canva metadata (optional)
+    canvaDesignId?: string;
+    canvaCorrelationState?: string;
   };
 }
 
@@ -52,14 +55,6 @@ export function saveImage(image: Omit<StoredImage, 'id' | 'timestamp'>): StoredI
   images.unshift(storedImage); // Add to beginning to maintain newest-first order
   localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
 
-  console.log('[localStorage] Image saved:', storedImage.url);
-  if (storedImage.type === 'video') {
-    console.log('[localStorage] Video saved with videoUrl:', storedImage.videoUrl, 'sourceImageId:', storedImage.sourceImageId);
-  }
-  if (storedImage.type === '3d-object') {
-    console.log('[localStorage] 3D object saved with glbUrl:', storedImage.glbUrl, 'sourceImageId:', storedImage.sourceImageId);
-  }
-
   return storedImage;
 }
 
@@ -79,11 +74,8 @@ export function loadAllImages(): StoredImage[] {
 export function deleteImage(imageId: string): boolean {
   try {
     const images = loadAllImages();
-    const imageToDelete = images.find(img => img.id === imageId);
     const filtered = images.filter(img => img.id !== imageId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(filtered));
-
-    console.log('[localStorage] Image deleted:', imageToDelete?.url);
 
     return true;
   } catch (error) {
@@ -167,7 +159,6 @@ export function loadSelections(): SelectionState {
     if (!selections.hasOwnProperty('selectedForConvertTo3d')) {
       selections.selectedForConvertTo3d = null;
     }
-    console.log('[localStorage] Selections loaded:', selections);
     return selections;
   } catch (error) {
     console.error('Failed to load selections from localStorage:', error);

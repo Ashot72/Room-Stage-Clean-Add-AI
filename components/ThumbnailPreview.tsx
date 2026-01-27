@@ -27,6 +27,7 @@ const getTypeLabel = (type: StoredImage['type']) => {
     angled: 'Different Angles',
     video: 'Video',
     '3d-object': '3D Object',
+    canva: 'Canva',
   }
   return labels[type] || 'Image'
 }

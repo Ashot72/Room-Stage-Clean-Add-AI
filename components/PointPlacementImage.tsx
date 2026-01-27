@@ -32,7 +32,6 @@ export default function PointPlacementImage({
     if (!containerRef.current || !imageRef.current) return null
 
     const imgRect = imageRef.current.getBoundingClientRect()
-    const containerRect = containerRef.current.getBoundingClientRect()
 
     const relativeX = (x - imgRect.left) / imgRect.width
     const relativeY = (y - imgRect.top) / imgRect.height

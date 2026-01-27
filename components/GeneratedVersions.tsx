@@ -1,7 +1,21 @@
 'use client'
 
 import { useState, useRef, useEffect } from 'react'
-import { X } from 'lucide-react'
+import {
+  ArrowLeft,
+  ArrowRight,
+  Box,
+  Camera,
+  Download,
+  Edit3,
+  Eye,
+  Plus,
+  Sofa,
+  Sparkles,
+  Trash2,
+  Video,
+  X,
+} from 'lucide-react'
 import type { StoredImage } from '@/lib/imageStorage'
 import ThumbnailPreview from './ThumbnailPreview'
 
@@ -18,6 +32,7 @@ interface GeneratedVersionsProps {
   selectedForConvertTo3d: string | null
   onSetImageSelection: (type: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d', imageId: string) => void
   onDelete: (imageId: string) => void
+  onEnableCanvaEditing: (imageId: string) => void
 }
 
 export default function GeneratedVersions({
@@ -33,11 +48,25 @@ export default function GeneratedVersions({
   selectedForConvertTo3d,
   onSetImageSelection,
   onDelete,
+  onEnableCanvaEditing,
 }: GeneratedVersionsProps) {
-  const [contextMenu, setContextMenu] = useState<{ imageId: string; x: number; y: number; openUp: boolean } | null>(null)
+  const getContextMenuVerticalOffsetPx = (variant: 'full' | 'restricted') => {
+    // Non-video/full menu: move up 30px. Video/3D restricted menu: keep slightly higher.
+    return variant === 'full' ? -235 : -55
+  }
+
+  const [contextMenu, setContextMenu] = useState<{
+    imageId: string
+    x: number
+    y: number
+    openUp: boolean
+    variant: 'full' | 'restricted'
+    anchorY: number
+  } | null>(null)
   const [previewImage, setPreviewImage] = useState<StoredImage | null>(null)
   const [isPreviewVisible, setIsPreviewVisible] = useState(false)
   const hoverTimeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const contextMenuRef = useRef<HTMLDivElement | null>(null)
 
   // Cleanup timeout on unmount
   useEffect(() => {
@@ -48,36 +77,72 @@ export default function GeneratedVersions({
     }
   }, [])
 
+  // After opening, re-position using the actual rendered menu height (fixes alignment for full menu).
+  useEffect(() => {
+    if (!contextMenu) return
+    if (!contextMenuRef.current) return
+
+    const raf = window.requestAnimationFrame(() => {
+      const el = contextMenuRef.current
+      if (!el) return
+
+      const rect = el.getBoundingClientRect()
+      const menuHeight = rect.height
+      const viewportHeight = window.innerHeight
+      const verticalOffsetPx = getContextMenuVerticalOffsetPx(contextMenu.variant)
+
+      // Center around the anchor (thumbnail middle) + desired offset, then clamp.
+      let nextTop = contextMenu.anchorY - menuHeight / 2 + verticalOffsetPx
+      if (nextTop < 10) nextTop = 10
+      if (nextTop + menuHeight > viewportHeight - 10) {
+        nextTop = viewportHeight - menuHeight - 10
+        if (nextTop < 10) nextTop = 10
+      }
+
+      if (Math.abs(nextTop - contextMenu.y) >= 1) {
+        setContextMenu((prev) => {
+          if (!prev) return prev
+          // If the menu changed since scheduling the RAF, ignore this update.
+          if (prev.imageId !== contextMenu.imageId) return prev
+          return {
+            ...prev,
+            y: nextTop,
+            openUp: nextTop < prev.anchorY,
+          }
+        })
+      }
+    })
+
+    return () => {
+      window.cancelAnimationFrame(raf)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [contextMenu?.imageId, contextMenu?.variant])
+
   const handleContextMenu = (e: React.MouseEvent, imageId: string) => {
     e.preventDefault()
-    
-    // Calculate if menu should open upward
-    // Menu has: View, separator, Clean, Staging, Add Item, separator, Before, After, separator, Different Angles, Video Generation, separator, Download, separator, Delete = ~420px
-    const menuHeight = 420 // Approximate menu height in pixels (updated for all items)
+
+    const clickedImage = images.find((img) => img.id === imageId)
+    const variant: 'full' | 'restricted' =
+      clickedImage?.type === 'video' || clickedImage?.type === '3d-object' ? 'restricted' : 'full'
+
+    // Full menu has many items (~420px). Restricted menu (video/3D) shows only View/Download/Delete.
+    const menuHeight = variant === 'restricted' ? 160 : 420 // Approximate menu height in pixels
     const viewportHeight = window.innerHeight
-    const clickY = e.clientY
-    const spaceBelow = viewportHeight - clickY
-    const spaceAbove = clickY
-    
-    // Prefer opening upward if there's not enough space below, or if there's more space above
-    const openUp = spaceBelow < menuHeight || (spaceAbove > spaceBelow && spaceAbove >= menuHeight)
-    
-    // Calculate top position: if opening up, position above click point
-    let topPosition: number
-    if (openUp) {
-      topPosition = clickY - menuHeight + 20 // Move down by 20px
-      // Ensure it doesn't go off the top of the screen
-      if (topPosition < 10) {
-        topPosition = 10 // Small margin from top
-      }
-    } else {
-      topPosition = clickY + 20 // Move down by 20px
-      // Ensure it doesn't go off the bottom of the screen
-      if (topPosition + menuHeight > viewportHeight - 10) {
-        topPosition = viewportHeight - menuHeight - 10 // Position above bottom with margin
-      }
+
+    // Anchor menu vertically to the thumbnail's middle (not the click position)
+    const thumbRect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const anchorY = thumbRect.top + thumbRect.height / 2
+    const verticalOffsetPx = getContextMenuVerticalOffsetPx(variant)
+
+    // Center the menu around the thumbnail middle, then clamp into viewport
+    let topPosition = anchorY - menuHeight / 2 + verticalOffsetPx
+    if (topPosition < 10) topPosition = 10
+    if (topPosition + menuHeight > viewportHeight - 10) {
+      topPosition = viewportHeight - menuHeight - 10
+      if (topPosition < 10) topPosition = 10
     }
-    
+
     // Also check if menu would go off the right edge
     const menuWidth = 180 // Approximate menu width (slightly wider for longer text)
     const clickX = e.clientX
@@ -91,15 +156,17 @@ export default function GeneratedVersions({
       leftPosition = 10 // Small margin from left
     }
     
-    setContextMenu({ 
-      imageId, 
-      x: leftPosition, 
+    setContextMenu({
+      imageId,
+      x: leftPosition,
       y: topPosition,
-      openUp 
+      openUp: topPosition < anchorY,
+      variant,
+      anchorY,
     })
   }
 
-  const handleContextAction = (action: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'view-angles' | 'generate-video' | 'convert-to-3d' | 'download' | 'delete') => {
+  const handleContextAction = (action: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'view-angles' | 'generate-video' | 'convert-to-3d' | 'edit-in-canva' | 'download' | 'delete') => {
     if (!contextMenu) return
 
     switch (action) {
@@ -146,13 +213,29 @@ export default function GeneratedVersions({
         // Set image for 3D conversion
         onSetImageSelection('convert-to-3d', contextMenu.imageId)
         break
+      case 'edit-in-canva': {
+        // Enable the toolbar button instead of redirecting
+        onEnableCanvaEditing(contextMenu.imageId)
+        break
+      }
       case 'download': {
-        // Download the image/video file directly
+        // Download the image/video/GLB file directly
         const image = images.find(img => img.id === contextMenu.imageId)
         if (image) {
-          // For videos, download the video file; for others, download the image
-          const fileUrl = image.type === 'video' && image.videoUrl ? image.videoUrl : image.url
-          const fileType = image.type === 'video' ? 'video' : 'image'
+          // For 3D objects, download the GLB file; for videos, download the video file; for others, download the image
+          let fileUrl: string
+          let fileType: string
+
+          if (image.type === '3d-object' && image.glbUrl) {
+            fileUrl = image.glbUrl
+            fileType = '3d-object'
+          } else if (image.type === 'video' && image.videoUrl) {
+            fileUrl = image.videoUrl
+            fileType = 'video'
+          } else {
+            fileUrl = image.url
+            fileType = 'image'
+          }
           
           // Fetch the file and create a blob URL for download (handles CORS)
           fetch(fileUrl)
@@ -167,7 +250,8 @@ export default function GeneratedVersions({
               const link = document.createElement('a')
               link.href = url
               // Determine file extension from URL
-              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || (fileType === 'video' ? 'mp4' : 'png')
+              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || 
+                (fileType === 'video' ? 'mp4' : fileType === '3d-object' ? 'glb' : 'png')
               link.download = `${fileType}-${image.id}.${extension}`
               link.style.display = 'none'
               document.body.appendChild(link)
@@ -180,7 +264,8 @@ export default function GeneratedVersions({
               // Fallback: try direct download
               const link = document.createElement('a')
               link.href = fileUrl
-              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || (fileType === 'video' ? 'mp4' : 'png')
+              const extension = fileUrl.match(/\.([^.]+)(?:\?|$)/)?.[1] || 
+                (fileType === 'video' ? 'mp4' : fileType === '3d-object' ? 'glb' : 'png')
               link.download = `${fileType}-${image.id}.${extension}`
               link.target = '_blank'
               link.style.display = 'none'
@@ -226,6 +311,7 @@ export default function GeneratedVersions({
       angled: 'Different Angles',
       video: 'Video',
       '3d-object': '3D Object',
+      canva: 'Canva',
     }
     return labels[type]
   }
@@ -356,6 +442,7 @@ export default function GeneratedVersions({
             onClick={() => setContextMenu(null)}
           />
           <div
+            ref={contextMenuRef}
             className="fixed z-50 bg-black/90 border border-white/20 rounded-lg shadow-lg py-1 min-w-[150px]"
             style={{ 
               left: `${contextMenu.x}px`, 
@@ -364,74 +451,106 @@ export default function GeneratedVersions({
           >
             <button
               onClick={() => handleContextAction('view')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
+              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
             >
+              <Eye size={14} className="opacity-80" />
               View
             </button>
-            <div className="border-t border-white/10 my-1" />
-            <button
-              onClick={() => handleContextAction('staging')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Use for Staging
-            </button>
-            <button
-              onClick={() => handleContextAction('clean')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Use for Clean
-            </button>
-            <button
-              onClick={() => handleContextAction('add-item')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Use for Add Item
-            </button>
-            <div className="border-t border-white/10 my-1" />
-            <button
-              onClick={() => handleContextAction('before')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Set as Before
-            </button>
-            <button
-              onClick={() => handleContextAction('after')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Set as After
-            </button>
-            <div className="border-t border-white/10 my-1" />
-            <button
-              onClick={() => handleContextAction('view-angles')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Set Different Angles
-            </button>
-            <button
-              onClick={() => handleContextAction('generate-video')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Set for Video Generation
-            </button>
-            <div className="border-t border-white/10 my-1" />
-            <button
-              onClick={() => handleContextAction('convert-to-3d')}
-              className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10"
-            >
-              Convert to 3D
-            </button>
+
+            {contextMenu.variant === 'full' && (
+              <>
+                <div className="border-t border-white/10 my-1" />
+                <button
+                  onClick={() => handleContextAction('staging')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Sofa size={14} className="opacity-80" />
+                  Use for Staging
+                </button>
+                <button
+                  onClick={() => handleContextAction('clean')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Sparkles size={14} className="opacity-80" />
+                  Use for Clean
+                </button>
+                <button
+                  onClick={() => handleContextAction('add-item')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Plus size={14} className="opacity-80" />
+                  Use for Add Item
+                </button>
+                <div className="border-t border-white/10 my-1" />
+                <button
+                  onClick={() => handleContextAction('before')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <ArrowLeft size={14} className="opacity-80" />
+                  Set as Before
+                </button>
+                <button
+                  onClick={() => handleContextAction('after')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <ArrowRight size={14} className="opacity-80" />
+                  Set as After
+                </button>
+                <div className="border-t border-white/10 my-1" />
+                <button
+                  onClick={() => handleContextAction('view-angles')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Camera size={14} className="opacity-80" />
+                  Set Different Angles
+                </button>
+                <button
+                  onClick={() => handleContextAction('generate-video')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Video size={14} className="opacity-80" />
+                  Set for Video Generation
+                </button>
+                <button
+                  onClick={() => handleContextAction('convert-to-3d')}
+                  className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                >
+                  <Box size={14} className="opacity-80" />
+                  Convert to 3D
+                </button>
+                {(() => {
+                  const img = images.find((i) => i.id === contextMenu.imageId)
+                  if (!img || img.type === 'video' || img.type === '3d-object') return null
+                  return (
+                    <>
+                      <div className="border-t border-white/10 my-1" />
+                      <button
+                        onClick={() => handleContextAction('edit-in-canva')}
+                        className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                      >
+                        <Edit3 size={14} className="opacity-80" />
+                        Enable Edit in Canva
+                      </button>
+                    </>
+                  )
+                })()}
+              </>
+            )}
+
             <div className="border-t border-white/10 my-1" />
             <button
               onClick={() => handleContextAction('download')}
-              className="w-full px-3 py-2 text-left text-sm text-cyan-400 hover:bg-white/10"
+              className="w-full px-3 py-2 text-left text-sm text-cyan-400 hover:bg-white/10 flex items-center gap-2"
             >
+              <Download size={14} className="opacity-90" />
               Download
             </button>
             <div className="border-t border-white/10 my-1" />
             <button
               onClick={() => handleContextAction('delete')}
-              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20"
+              className="w-full px-3 py-2 text-left text-sm text-red-400 hover:bg-red-500/20 flex items-center gap-2"
             >
+              <Trash2 size={14} className="opacity-90" />
               Delete
             </button>
           </div>
