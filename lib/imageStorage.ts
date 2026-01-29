@@ -12,6 +12,7 @@ export interface StoredImage {
       x: number;
       y: number;
     }>;
+    hasAudio?: boolean; // true when video was generated with add-audio (MMAudio)
     // Canva metadata (optional)
     canvaDesignId?: string;
     canvaCorrelationState?: string;
@@ -89,6 +90,21 @@ export function getImageById(imageId: string): StoredImage | null {
   return images.find(img => img.id === imageId) || null;
 }
 
+export function updateImage(imageId: string, updates: Partial<Omit<StoredImage, 'id' | 'timestamp'>>): StoredImage | null {
+  try {
+    const images = loadAllImages();
+    const index = images.findIndex(img => img.id === imageId);
+    if (index === -1) return null;
+    const updated = { ...images[index], ...updates } as StoredImage;
+    images[index] = updated;
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(images));
+    return updated;
+  } catch (error) {
+    console.error('Failed to update image in localStorage:', error);
+    return null;
+  }
+}
+
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 }
@@ -103,6 +119,7 @@ export interface SelectionState {
   selectedForDifferentAngles: string | null;
   selectedForVideo: string | null;
   selectedForConvertTo3d: string | null;
+  selectedForAddAudio: string | null;
 }
 
 export function saveSelections(selections: SelectionState): void {
@@ -127,6 +144,7 @@ export function loadSelections(): SelectionState {
       selectedForDifferentAngles: null,
       selectedForVideo: null,
       selectedForConvertTo3d: null,
+      selectedForAddAudio: null,
     };
   }
   
@@ -142,6 +160,7 @@ export function loadSelections(): SelectionState {
       selectedForDifferentAngles: null,
       selectedForVideo: null,
       selectedForConvertTo3d: null,
+      selectedForAddAudio: null,
     };
     // Ensure backward compatibility
     if (!selections.hasOwnProperty('selectedForAddItem')) {
@@ -159,6 +178,9 @@ export function loadSelections(): SelectionState {
     if (!selections.hasOwnProperty('selectedForConvertTo3d')) {
       selections.selectedForConvertTo3d = null;
     }
+    if (!selections.hasOwnProperty('selectedForAddAudio')) {
+      selections.selectedForAddAudio = null;
+    }
     return selections;
   } catch (error) {
     console.error('Failed to load selections from localStorage:', error);
@@ -172,6 +194,7 @@ export function loadSelections(): SelectionState {
       selectedForDifferentAngles: null,
       selectedForVideo: null,
       selectedForConvertTo3d: null,
+      selectedForAddAudio: null,
     };
   }
 }

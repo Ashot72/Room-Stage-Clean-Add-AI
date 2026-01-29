@@ -13,6 +13,10 @@ Turn your 2D interior photos into interactive 3D models with AI-powered tools! P
 #### ✨Enhanced with Canva-Powered Editing  
 Users can open images directly in Canva from the app, apply AI-powered edits such as object removal, touch-ups, and return the results seamlessly. Original image format, resolution, and quality are preserved, and a Before/After comparison is generated automatically. This allows realistic visualizations for real estate listings, interior design mockups, and visual content creation, all without leaving the app context.
 
+#### 🎧 AI-Powered Audio for Room Videos
+
+The app adds synchronized audio to any video using a simple text prompt. Silent room or listing videos feel flat, but AI-generated ambience, soft music, or natural sounds make them more realistic and engaging. You can generate audio for existing videos or turn a single room image into a video with sound, creating immersive walkthroughs, virtual tours, or real estate listings. Audio helps viewers connect emotionally and experience the space as if they’re actually there.
+
 ---
 ### Features 🚀
 
@@ -66,6 +70,11 @@ Users can open images directly in Canva from the app, apply AI-powered edits suc
 - Automatically generate Before / After comparisons
 - Securely integrated via OAuth authentication 
 
+#### 9. Synchronized Audio  
+- Add ambience, music, or nature sounds to any video
+- Turn silent clips into immersive experiences with a text prompt
+- Make walkthroughs feel alive and connect emotionally
+
 ---
 
 #### 👉 Links & Resources
@@ -80,6 +89,7 @@ Users can open images directly in Canva from the app, apply AI-powered edits suc
 - [Image to Video Model](https://fal.ai/models/fal-ai/kling-video/v2.5-turbo/pro/image-to-video)  
 - [3D Objects](https://fal.ai/models/fal-ai/sam-3/3d-objects) 
 - [Canva](https://www.canva.com/) 
+- [MMAudio Video to Video](https://fal.ai/models/fal-ai/mmaudio-v2)
 ---
 
 #### 🚀 Clone and Run
@@ -113,3 +123,7 @@ npm run dev
 📺 **Video: (3D Interiors from Photos with)** [Watch on YouTube](https://youtu.be/NE8awddiMhM) 
 
 📺 **Video: (Canva-Powered Image Editing)** [Watch on YouTube](https://youtu.be/eNKE2FYYdGM) 
+
+📺 **Video: (Adding Realistic AI-Powered Audio to Videos)** [Watch on YouTube](https://youtu.be/kJG1npJXA5M) 
+
+

@@ -15,10 +15,13 @@ interface ThumbnailPreviewProps {
   selectedForDifferentAngles?: string | null
   selectedForVideo?: string | null
   selectedForConvertTo3d?: string | null
+  selectedForAddAudio?: string | null
 }
 
-const getTypeLabel = (type: StoredImage['type']) => {
-  const labels = {
+const getTypeLabel = (image: StoredImage) => {
+  // Audio-generated items (video + hasAudio) show as "Audio" not "Video"
+  if (image.type === 'video' && image.metadata?.hasAudio) return 'Audio'
+  const labels: Record<StoredImage['type'], string> = {
     original: 'Original',
     cleaned: 'Cleaned',
     staged: 'Staged',
@@ -29,7 +32,7 @@ const getTypeLabel = (type: StoredImage['type']) => {
     '3d-object': '3D Object',
     canva: 'Canva',
   }
-  return labels[type] || 'Image'
+  return labels[image.type] || 'Image'
 }
 
 export default function ThumbnailPreview({ 
@@ -44,7 +47,8 @@ export default function ThumbnailPreview({
   selectedForView,
   selectedForDifferentAngles,
   selectedForVideo,
-  selectedForConvertTo3d
+  selectedForConvertTo3d,
+  selectedForAddAudio
 }: ThumbnailPreviewProps) {
   if (!isVisible || !image) return null
 
@@ -56,6 +60,8 @@ export default function ThumbnailPreview({
     borderColor = 'border-purple-500'
   } else if (selectedForVideo === image.id) {
     borderColor = 'border-indigo-500'
+  } else if (selectedForAddAudio === image.id) {
+    borderColor = 'border-amber-500'
   } else if (selectedForConvertTo3d === image.id) {
     borderColor = 'border-teal-500'
   } else if (selectedForClean === image.id) {
@@ -83,13 +89,13 @@ export default function ThumbnailPreview({
           <div className="flex-1 flex items-center justify-center overflow-hidden relative">
             <img
               src={image.url}
-              alt={getTypeLabel(image.type)}
+              alt={getTypeLabel(image)}
               className="w-full h-full"
             />
           </div>
           <div className="bg-black/60 px-4 py-2 border-t border-white/20 flex-shrink-0">
             <p className="text-white text-sm font-medium text-center">
-              {getTypeLabel(image.type)}
+              {getTypeLabel(image)}
             </p>
           </div>
         </div>

@@ -54,9 +54,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const { action, imageUrl, prompt, selection, referenceImageUrl, horizontal_angle, vertical_angle, zoom, duration, pointPrompts } = await req.json();
+    const { action, imageUrl, videoUrl, prompt, selection, referenceImageUrl, horizontal_angle, vertical_angle, zoom, duration, pointPrompts } = await req.json();
 
-    if (!imageUrl) {
+    if (action !== "add-audio" && !imageUrl) {
       return Response.json({ error: "Image URL is required" }, { status: 400 });
     }
 
@@ -197,16 +197,16 @@ export async function POST(req: Request) {
         const videoData: any = result.data || result;
         // Extract video URL from response
         // Expected structure: { video: { url: "...", content_type: "video/mp4", ... } }
-        const videoUrl = videoData.video?.url;
+        const generatedVideoUrl = videoData.video?.url;
         
-        if (!videoUrl) {
+        if (!generatedVideoUrl) {
           return Response.json({ error: "Failed to extract video URL from response" }, { status: 500 });
         }
         
         // Return both original image URL and generated video URL
         return Response.json({ 
           imageUrl: imageUrl, // Original image URL
-          videoUrl: videoUrl 
+          videoUrl: generatedVideoUrl 
         });
 
       case "convert-to-3d":
@@ -250,6 +250,33 @@ export async function POST(req: Request) {
         return Response.json({ 
           imageUrl: imageUrl, // Original image URL
           glbUrl: glbUrl 
+        });
+
+      case "add-audio":
+        // Add synchronized audio to video using MMAudio V2
+        if (!videoUrl) {
+          return Response.json({ error: "Video URL is required for add-audio" }, { status: 400 });
+        }
+        if (!prompt) {
+          return Response.json({ error: "Prompt is required for add-audio" }, { status: 400 });
+        }
+        result = await fal.subscribe("fal-ai/mmaudio-v2", {
+          input: {
+            video_url: videoUrl,
+            prompt,
+            num_steps: 25,
+            duration: 5,
+            cfg_strength: 4.5,
+          },
+        });
+        const addAudioData: any = result.data || result;
+        const addAudioVideoUrlOut = addAudioData.video?.url;
+        if (!addAudioVideoUrlOut) {
+          return Response.json({ error: "Failed to extract video URL from add-audio response" }, { status: 500 });
+        }
+        return Response.json({
+          imageUrl: videoUrl,
+          videoUrl: addAudioVideoUrlOut,
         });
 
       default:

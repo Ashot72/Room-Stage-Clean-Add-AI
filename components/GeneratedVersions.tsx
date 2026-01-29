@@ -9,6 +9,7 @@ import {
   Download,
   Edit3,
   Eye,
+  Music,
   Plus,
   Sofa,
   Sparkles,
@@ -30,7 +31,8 @@ interface GeneratedVersionsProps {
   selectedForDifferentAngles: string | null
   selectedForVideo: string | null
   selectedForConvertTo3d: string | null
-  onSetImageSelection: (type: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d', imageId: string) => void
+  selectedForAddAudio: string | null
+  onSetImageSelection: (type: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d' | 'add-audio', imageId: string) => void
   onDelete: (imageId: string) => void
   onEnableCanvaEditing: (imageId: string) => void
 }
@@ -46,6 +48,7 @@ export default function GeneratedVersions({
   selectedForDifferentAngles,
   selectedForVideo,
   selectedForConvertTo3d,
+  selectedForAddAudio,
   onSetImageSelection,
   onDelete,
   onEnableCanvaEditing,
@@ -166,7 +169,7 @@ export default function GeneratedVersions({
     })
   }
 
-  const handleContextAction = (action: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'view-angles' | 'generate-video' | 'convert-to-3d' | 'edit-in-canva' | 'download' | 'delete') => {
+  const handleContextAction = (action: 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'view-angles' | 'generate-video' | 'convert-to-3d' | 'add-audio' | 'edit-in-canva' | 'download' | 'delete') => {
     if (!contextMenu) return
 
     switch (action) {
@@ -212,6 +215,10 @@ export default function GeneratedVersions({
       case 'convert-to-3d':
         // Set image for 3D conversion
         onSetImageSelection('convert-to-3d', contextMenu.imageId)
+        break
+      case 'add-audio':
+        // Set video for adding audio (MMAudio V2)
+        onSetImageSelection('add-audio', contextMenu.imageId)
         break
       case 'edit-in-canva': {
         // Enable the toolbar button instead of redirecting
@@ -289,9 +296,11 @@ export default function GeneratedVersions({
 
   const getBadges = (imageId: string) => {
     const badges = []
+    // Only show a badge for the active selection mode (View, Generate Video, Add Audio, etc.) — never a standalone "Audio" badge
     if (selectedForView === imageId) badges.push({ label: 'View', color: 'bg-gray-500' })
     if (selectedForDifferentAngles === imageId) badges.push({ label: 'Different Angles', color: 'bg-purple-500' })
     if (selectedForVideo === imageId) badges.push({ label: 'Generate Video', color: 'bg-indigo-500' })
+    if (selectedForAddAudio === imageId) badges.push({ label: 'Add Audio', color: 'bg-amber-500' })
     if (selectedForConvertTo3d === imageId) badges.push({ label: 'Convert to 3D', color: 'bg-teal-500' })
     if (selectedForClean === imageId) badges.push({ label: 'Clean', color: 'bg-cyan-500' })
     if (selectedBefore === imageId) badges.push({ label: 'Before', color: 'bg-blue-500' })
@@ -301,7 +310,10 @@ export default function GeneratedVersions({
     return badges
   }
 
-  const getTypeLabel = (type: StoredImage['type']) => {
+  const getTypeLabel = (img: StoredImage) => {
+    // Audio-generated items (video + hasAudio) show as "Audio" not "Video"
+    if (img.type === 'video' && img.metadata?.hasAudio) return 'Audio'
+    const type = img.type
     const labels = {
       original: 'Original',
       cleaned: 'Cleaned',
@@ -330,6 +342,7 @@ export default function GeneratedVersions({
                 ${selectedForView === image.id ? 'border-gray-500' : ''}
                 ${selectedForDifferentAngles === image.id ? 'border-purple-500' : ''}
                 ${selectedForVideo === image.id ? 'border-indigo-500' : ''}
+                ${selectedForAddAudio === image.id ? 'border-amber-500' : ''}
                 ${selectedForConvertTo3d === image.id ? 'border-teal-500' : ''}
                 ${selectedForClean === image.id ? 'border-cyan-500' : ''}
                 ${selectedBefore === image.id ? 'border-blue-500' : ''}
@@ -372,7 +385,7 @@ export default function GeneratedVersions({
                 src={image.type === 'video' && image.sourceImageId 
                   ? (images.find(img => img.id === image.sourceImageId)?.url || image.url)
                   : image.url}
-                alt={getTypeLabel(image.type)}
+                alt={getTypeLabel(image)}
                 className="w-full h-full"
                 draggable={false}
               />
@@ -391,7 +404,7 @@ export default function GeneratedVersions({
 
               {/* Type Label */}
               <div className="absolute bottom-0 left-0 right-0 bg-black/60 text-white text-[8px] px-1 py-0.5 text-center">
-                {getTypeLabel(image.type)}
+                {getTypeLabel(image)}
               </div>
 
               {/* Delete Button */}
@@ -456,6 +469,26 @@ export default function GeneratedVersions({
               <Eye size={14} className="opacity-80" />
               View
             </button>
+
+            {contextMenu.variant === 'restricted' && (() => {
+              const img = images.find((i) => i.id === contextMenu.imageId)
+              // Add Audio only for video without audio (not for items that already have audio)
+              if (img?.type === 'video' && !img.metadata?.hasAudio) {
+                return (
+                  <>
+                    <div className="border-t border-white/10 my-1" />
+                    <button
+                      onClick={() => handleContextAction('add-audio')}
+                      className="w-full px-3 py-2 text-left text-sm text-white hover:bg-white/10 flex items-center gap-2"
+                    >
+                      <Music size={14} className="opacity-80" />
+                      Add Audio
+                    </button>
+                  </>
+                )
+              }
+              return null
+            })()}
 
             {contextMenu.variant === 'full' && (
               <>
@@ -578,6 +611,7 @@ export default function GeneratedVersions({
           selectedForDifferentAngles={selectedForDifferentAngles}
           selectedForVideo={selectedForVideo}
           selectedForConvertTo3d={selectedForConvertTo3d}
+          selectedForAddAudio={selectedForAddAudio}
         />
     </>
   )

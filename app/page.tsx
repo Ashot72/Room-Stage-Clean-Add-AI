@@ -27,8 +27,8 @@ type PolygonPoint = {
   y: number
 }
 
-type SelectionType = 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d'
-type ActionType = 'clean' | 'stage' | 'add-item' | 'different-angles' | 'generate-video' | 'convert-to-3d'
+type SelectionType = 'clean' | 'before' | 'after' | 'staging' | 'add-item' | 'view' | 'different-angles' | 'video' | 'convert-to-3d' | 'add-audio'
+type ActionType = 'clean' | 'stage' | 'add-item' | 'different-angles' | 'generate-video' | 'convert-to-3d' | 'add-audio'
 
 // Reusable Loading Overlay Component
 const LoadingOverlay = () => (
@@ -93,6 +93,7 @@ export default function Home() {
     differentAngles: null as string | null,
     video: null as string | null,
     convertTo3d: null as string | null,
+    addAudio: null as string | null,
   })
   const [prompts, setPrompts] = useState({
     clean: '',
@@ -100,6 +101,7 @@ export default function Home() {
     addItem: '',
     video: '',
     convertTo3d: '',
+    addAudio: '',
   })
   const [loadingState, setLoadingState] = useState({
     isLoading: false,
@@ -183,10 +185,42 @@ export default function Home() {
         selectedForDifferentAngles: selections.differentAngles,
         selectedForVideo: null, // Clear video generation selection
         selectedForConvertTo3d: selections.convertTo3d,
+        selectedForAddAudio: selections.addAudio,
       })
       
       // Clear video prompt
       setPrompts(prev => ({ ...prev, video: '' }))
+    } else if (action === 'add-audio') {
+      // New video with audio: save as new entry (both old and new stay in localStorage), show new one on stage
+      if (!data.videoUrl) {
+        console.error('No videoUrl in response data:', data)
+      }
+      const storedImage = saveImage({
+        url: data.imageUrl,
+        type: 'video',
+        videoUrl: data.videoUrl,
+        sourceImageId: originalImageId,
+        metadata: { prompt, hasAudio: true },
+      })
+      setStoredImages(prev => [storedImage, ...prev])
+      setSelections(prev => ({
+        ...prev,
+        addAudio: null,
+        view: storedImage.id,
+      }))
+      saveSelections({
+        selectedBefore: selections.before,
+        selectedAfter: selections.after,
+        selectedForClean: selections.clean,
+        selectedForStaging: selections.staging,
+        selectedForAddItem: selections.addItem,
+        selectedForView: storedImage.id,
+        selectedForDifferentAngles: selections.differentAngles,
+        selectedForVideo: selections.video,
+        selectedForConvertTo3d: selections.convertTo3d,
+        selectedForAddAudio: null,
+      })
+      setPrompts(prev => ({ ...prev, addAudio: '' }))
     } else if (action === 'convert-to-3d') {
       // For 3D objects, save with glbUrl and sourceImageId (similar to video)
       if (!data.glbUrl) {
@@ -221,13 +255,14 @@ export default function Home() {
         selectedForDifferentAngles: selections.differentAngles,
         selectedForVideo: selections.video,
         selectedForConvertTo3d: null, // Clear 3D conversion selection
+        selectedForAddAudio: selections.addAudio,
       })
       
       // Clear point prompts
       setPointPrompts([])
     } else {
       // For other actions, use the existing logic
-      const typeMap: Record<Exclude<ActionType, 'generate-video' | 'convert-to-3d'>, 'cleaned' | 'staged' | 'added' | 'angled'> = {
+      const typeMap: Record<Exclude<ActionType, 'generate-video' | 'convert-to-3d' | 'add-audio'>, 'cleaned' | 'staged' | 'added' | 'angled'> = {
         'clean': 'cleaned' as const,
         'stage': 'staged' as const,
         'add-item': 'added' as const,
@@ -236,7 +271,7 @@ export default function Home() {
       
       const storedImage = saveImage({
         url: data.imageUrl,
-        type: typeMap[action as Exclude<ActionType, 'generate-video' | 'convert-to-3d'>],
+        type: typeMap[action as Exclude<ActionType, 'generate-video' | 'convert-to-3d' | 'add-audio'>],
         metadata: { prompt, selection: selection || undefined },
       })
       
@@ -262,6 +297,7 @@ export default function Home() {
         selectedForDifferentAngles: action === 'different-angles' ? null : selections.differentAngles,
         selectedForVideo: selections.video,
         selectedForConvertTo3d: selections.convertTo3d,
+        selectedForAddAudio: selections.addAudio,
       })
       
       // Clear prompt for add-item
@@ -291,6 +327,7 @@ export default function Home() {
       differentAngles: validateAndSet(savedSelections.selectedForDifferentAngles, images),
       video: validateAndSet(savedSelections.selectedForVideo, images),
       convertTo3d: validateAndSet(savedSelections.selectedForConvertTo3d, images),
+      addAudio: validateAndSet(savedSelections.selectedForAddAudio, images),
     })
     
     // Auto-select first image as "View" if no selection exists
@@ -381,16 +418,20 @@ export default function Home() {
       const promptToUse = prompt || 
         (action === 'clean' ? prompts.clean : 
          action === 'add-item' ? prompts.addItem : 
+         action === 'add-audio' ? prompts.addAudio :
          prompts.staging) || 
         selectedStyle
 
-      const requestBody: any = {
-        action,
-        imageUrl,
-        prompt: promptToUse,
-        selection: selection || undefined,
-        referenceImageUrl: referenceImageUrl || undefined,
-      }
+      const requestBody: any =
+        action === 'add-audio'
+          ? { action: 'add-audio', videoUrl: imageUrl, prompt: promptToUse }
+          : {
+              action,
+              imageUrl,
+              prompt: promptToUse,
+              selection: selection || undefined,
+              referenceImageUrl: referenceImageUrl || undefined,
+            }
 
       // Add angle parameters for different-angles action
       if (action === 'different-angles' && angleParams) {
@@ -421,6 +462,7 @@ export default function Home() {
                              action === 'different-angles' ? selections.differentAngles :
                              action === 'generate-video' ? selections.video :
                              action === 'convert-to-3d' ? selections.convertTo3d :
+                             action === 'add-audio' ? selections.addAudio :
                              selections.addItem
 
       if (originalImageId) {
@@ -504,6 +546,23 @@ export default function Home() {
     callAPI('generate-video', imageToUse, prompts.video)
   }
 
+  const handleAddAudio = () => {
+    const image = selections.addAudio ? getImageById(selections.addAudio) : null
+    if (!image) {
+      setError('Please select a video for adding audio first')
+      return
+    }
+    if (image.type !== 'video' || !image.videoUrl) {
+      setError('Selected item must be a video with a video URL')
+      return
+    }
+    if (!prompts.addAudio.trim()) {
+      setError('Please enter an audio prompt')
+      return
+    }
+    callAPI('add-audio', image.videoUrl, prompts.addAudio)
+  }
+
   // Delete image handler
   const handleDeleteImage = (imageId: string) => {
     const imageToDelete = getImageById(imageId)
@@ -526,6 +585,7 @@ export default function Home() {
         differentAngles: selections.differentAngles === imageId ? null : selections.differentAngles,
         video: selections.video === imageId ? null : selections.video,
         convertTo3d: selections.convertTo3d === imageId ? null : selections.convertTo3d,
+        addAudio: selections.addAudio === imageId ? null : selections.addAudio,
       }
       
       setSelections(newSelections)
@@ -539,6 +599,7 @@ export default function Home() {
         selectedForDifferentAngles: newSelections.differentAngles,
         selectedForVideo: newSelections.video,
         selectedForConvertTo3d: newSelections.convertTo3d,
+        selectedForAddAudio: newSelections.addAudio,
       })
     }
   }
@@ -554,6 +615,7 @@ export default function Home() {
                          selections.differentAngles ? 'different-angles' :
                          selections.video ? 'video' :
                          selections.convertTo3d ? 'convert-to-3d' :
+                         selections.addAudio ? 'add-audio' :
                          null
     
     // Clear polygon when switching states
@@ -573,6 +635,8 @@ export default function Home() {
       } else if (currentState === 'convert-to-3d') {
         setPrompts(prev => ({ ...prev, convertTo3d: '' }))
         setPointPrompts([])
+      } else if (currentState === 'add-audio') {
+        setPrompts(prev => ({ ...prev, addAudio: '' }))
       }
     } else if (currentState !== null && currentState === type) {
       setSelection(null)
@@ -593,6 +657,7 @@ export default function Home() {
       differentAngles: type === 'different-angles' ? imageId : null,
       video: type === 'video' ? imageId : null,
       convertTo3d: type === 'convert-to-3d' ? imageId : null,
+      addAudio: type === 'add-audio' ? imageId : null,
     }
     
     // Handle mutual exclusivity for before/after
@@ -614,6 +679,7 @@ export default function Home() {
       selectedForDifferentAngles: newSelections.differentAngles,
       selectedForVideo: newSelections.video,
       selectedForConvertTo3d: newSelections.convertTo3d,
+      selectedForAddAudio: newSelections.addAudio,
     })
   }
 
@@ -642,6 +708,7 @@ export default function Home() {
   const canDifferentAngles = !!selections.differentAngles
   const canGenerateVideo = !!selections.video && !!prompts.video.trim()
   const canConvertTo3D = !!selections.convertTo3d && pointPrompts.filter(p => p.label === 1).length > 0 && !!prompts.convertTo3d.trim()
+  const canAddAudio = !!selections.addAudio && !!prompts.addAudio.trim()
 
   const canvaTargetImage = useMemo(() => {
     return canvaSelectedImageId ? getImageById(canvaSelectedImageId) : null
@@ -658,7 +725,8 @@ export default function Home() {
     !selections.addItem &&
     !selections.differentAngles &&
     !selections.video &&
-    !selections.convertTo3d
+    !selections.convertTo3d &&
+    !selections.addAudio
   )
 
   const generateCorrelationState = () => {
@@ -729,6 +797,7 @@ export default function Home() {
         onGenerateVideo={handleGenerateVideo}
         onConvertTo3D={handleConvertTo3DClick}
         onEditInCanva={handleEditInCanva}
+        onAddAudio={handleAddAudio}
         canClean={canClean}
         canAddItem={canAddItem}
         canStage={canStage}
@@ -736,6 +805,7 @@ export default function Home() {
         canGenerateVideo={canGenerateVideo}
         canConvertTo3D={canConvertTo3D}
         canEditInCanva={canEditInCanva}
+        canAddAudio={canAddAudio}
         loading={loadingState.isLoading}
       />
 
@@ -843,6 +913,19 @@ export default function Home() {
           </div>
         )}
 
+        {selections.addAudio && !selections.clean && !selections.addItem && !selections.view && !selections.staging && !selections.video && !selections.convertTo3d && (
+          <div>
+            <PromptInput
+              label="Audio prompt:"
+              value={prompts.addAudio}
+              onChange={(value) => setPrompts(prev => ({ ...prev, addAudio: value }))}
+              onClear={() => setPrompts(prev => ({ ...prev, addAudio: '' }))}
+              placeholder="e.g., calm living room ambience, soft footsteps, gentle room tone..."
+              onEnter={canAddAudio ? handleAddAudio : undefined}
+            />
+          </div>
+        )}
+
         {selections.addItem && imageUrls.addItem && (
           <div className="px-6 py-3 border-b border-white/10 bg-black/20 space-y-3">
             <div className="flex items-center gap-2">
@@ -937,6 +1020,19 @@ export default function Home() {
                 sliderMode={sliderMode && !!imageUrls.before && !!imageUrls.after}
                 onToggleSlider={() => setSliderMode(!sliderMode)}
               />
+            ) : selections.addAudio ? (
+              // Add Audio: show video on stage (same as view)
+              (() => {
+                const addAudioImage = getImageById(selections.addAudio)
+                if (!addAudioImage || addAudioImage.type !== 'video' || !addAudioImage.videoUrl) return null
+                const sourceImageUrl = addAudioImage.sourceImageId ? getImageUrl(addAudioImage.sourceImageId) : addAudioImage.url
+                return (
+                  <div className="relative w-full h-full overflow-hidden bg-black">
+                    {loadingState.isLoading && <LoadingOverlay />}
+                    <VideoPlayer videoUrl={addAudioImage.videoUrl} sourceImageUrl={sourceImageUrl || undefined} />
+                  </div>
+                )
+              })()
             ) : selections.video && imageUrls.video ? (
               // Show image when selected for video generation (before video is generated)
               <div className="relative w-full h-full overflow-y-auto overflow-x-hidden bg-black">
@@ -1056,9 +1152,9 @@ export default function Home() {
           </div>
 
           {/* Only show upload overlay for main upload (when no image is displayed) */}
-          {loadingState.isUploading && !displayImageUrl && !imageUrls.before && !selections.video && <LoadingOverlay />}
+          {loadingState.isUploading && !displayImageUrl && !imageUrls.before && !selections.video && !selections.addAudio && <LoadingOverlay />}
 
-          {!displayImageUrl && !imageUrls.before && !selections.video && !loadingState.isLoading && !loadingState.isUploading && (
+          {!displayImageUrl && !imageUrls.before && !selections.video && !selections.addAudio && !loadingState.isLoading && !loadingState.isUploading && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
               <div className="text-center pointer-events-auto">
                 <button
@@ -1101,6 +1197,7 @@ export default function Home() {
             selectedForDifferentAngles={selections.differentAngles}
             selectedForVideo={selections.video}
             selectedForConvertTo3d={selections.convertTo3d}
+            selectedForAddAudio={selections.addAudio}
             onSetImageSelection={setImageSelection}
             onDelete={handleDeleteImage}
             onEnableCanvaEditing={handleEnableCanvaEditing}

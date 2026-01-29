@@ -1,6 +1,6 @@
 'use client'
 
-import { Sparkles, Sofa, Plus, Camera, Video, Box, Edit3 } from 'lucide-react'
+import { Sparkles, Sofa, Plus, Camera, Video, Box, Edit3, Music } from 'lucide-react'
 
 interface ToolbarProps {
   onClean: () => void
@@ -10,6 +10,7 @@ interface ToolbarProps {
   onGenerateVideo: () => void
   onConvertTo3D: () => void
   onEditInCanva: () => void
+  onAddAudio: () => void
   canClean: boolean
   canAddItem: boolean
   canStage: boolean
@@ -17,6 +18,7 @@ interface ToolbarProps {
   canGenerateVideo: boolean
   canConvertTo3D: boolean
   canEditInCanva: boolean
+  canAddAudio: boolean
   loading?: boolean
 }
 
@@ -28,6 +30,7 @@ export default function Toolbar({
   onGenerateVideo,
   onConvertTo3D,
   onEditInCanva,
+  onAddAudio,
   canClean,
   canAddItem,
   canStage,
@@ -35,6 +38,7 @@ export default function Toolbar({
   canGenerateVideo,
   canConvertTo3D,
   canEditInCanva,
+  canAddAudio,
   loading = false 
 }: ToolbarProps) {
   const buttons = [
@@ -86,6 +90,13 @@ export default function Toolbar({
       icon: Edit3,
       onClick: onEditInCanva,
       enabled: canEditInCanva && !loading,
+    },
+    {
+      id: 'add-audio',
+      label: 'Add Audio',
+      icon: Music,
+      onClick: onAddAudio,
+      enabled: canAddAudio && !loading,
     },
   ]
 
