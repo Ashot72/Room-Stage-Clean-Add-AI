@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import type { StoredImage } from '@/lib/imageStorage'
+import { getTypeLabel } from '@/lib/imageStorage'
 import ThumbnailPreview from './ThumbnailPreview'
 
 interface GeneratedVersionsProps {
@@ -217,7 +218,6 @@ export default function GeneratedVersions({
         onSetImageSelection('convert-to-3d', contextMenu.imageId)
         break
       case 'add-audio':
-        // Set video for adding audio (MMAudio V2)
         onSetImageSelection('add-audio', contextMenu.imageId)
         break
       case 'edit-in-canva': {
@@ -295,8 +295,7 @@ export default function GeneratedVersions({
   }
 
   const getBadges = (imageId: string) => {
-    const badges = []
-    // Only show a badge for the active selection mode (View, Generate Video, Add Audio, etc.) — never a standalone "Audio" badge
+    const badges: { label: string; color: string }[] = []
     if (selectedForView === imageId) badges.push({ label: 'View', color: 'bg-gray-500' })
     if (selectedForDifferentAngles === imageId) badges.push({ label: 'Different Angles', color: 'bg-purple-500' })
     if (selectedForVideo === imageId) badges.push({ label: 'Generate Video', color: 'bg-indigo-500' })
@@ -308,24 +307,6 @@ export default function GeneratedVersions({
     if (selectedForStaging === imageId) badges.push({ label: 'Staging', color: 'bg-orange-500' })
     if (selectedForAddItem === imageId) badges.push({ label: 'Add Item', color: 'bg-pink-500' })
     return badges
-  }
-
-  const getTypeLabel = (img: StoredImage) => {
-    // Audio-generated items (video + hasAudio) show as "Audio" not "Video"
-    if (img.type === 'video' && img.metadata?.hasAudio) return 'Audio'
-    const type = img.type
-    const labels = {
-      original: 'Original',
-      cleaned: 'Cleaned',
-      staged: 'Staged',
-      reference: 'Reference',
-      added: 'Add Item',
-      angled: 'Different Angles',
-      video: 'Video',
-      '3d-object': '3D Object',
-      canva: 'Canva',
-    }
-    return labels[type]
   }
 
   return (
@@ -472,7 +453,6 @@ export default function GeneratedVersions({
 
             {contextMenu.variant === 'restricted' && (() => {
               const img = images.find((i) => i.id === contextMenu.imageId)
-              // Add Audio only for video without audio (not for items that already have audio)
               if (img?.type === 'video' && !img.metadata?.hasAudio) {
                 return (
                   <>

@@ -19,6 +19,22 @@ export interface StoredImage {
   };
 }
 
+export function getTypeLabel(img: StoredImage): string {
+  if (img.type === 'video' && img.metadata?.hasAudio) return 'Audio'
+  const labels: Record<StoredImage['type'], string> = {
+    original: 'Original',
+    cleaned: 'Cleaned',
+    staged: 'Staged',
+    reference: 'Reference',
+    added: 'Add Item',
+    angled: 'Different Angles',
+    video: 'Video',
+    '3d-object': '3D Object',
+    canva: 'Canva',
+  }
+  return labels[img.type] || 'Image'
+}
+
 const STORAGE_KEY = 'spacemesh_images';
 const SELECTIONS_KEY = 'spacemesh_selections';
 

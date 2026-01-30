@@ -11,15 +11,16 @@ import ImageSelector from '@/components/ImageSelector'
 import GeneratedVersions from '@/components/GeneratedVersions'
 import VideoPlayer from '@/components/VideoPlayer'
 import { Upload, X, Type, MousePointer2 } from 'lucide-react'
-import { 
-  uploadToFalStorage, 
-  saveImage, 
-  loadAllImages, 
-  deleteImage, 
+import {
+  uploadToFalStorage,
+  saveImage,
+  loadAllImages,
+  deleteImage,
   getImageById,
   saveSelections,
   loadSelections,
-  type StoredImage
+  type StoredImage,
+  type SelectionState,
 } from '@/lib/imageStorage'
 
 type PolygonPoint = {
@@ -149,6 +150,33 @@ export default function Home() {
   const displayImageUrl = imageUrls.staging || imageUrls.addItem || imageUrls.clean || imageUrls.view || imageUrls.differentAngles || imageUrls.convertTo3d
   const isComparisonMode = !!selections.before
 
+  const toSavePayload = (overrides: Partial<SelectionState>): SelectionState => ({
+    selectedBefore: selections.before,
+    selectedAfter: selections.after,
+    selectedForClean: selections.clean,
+    selectedForStaging: selections.staging,
+    selectedForAddItem: selections.addItem,
+    selectedForView: selections.view,
+    selectedForDifferentAngles: selections.differentAngles,
+    selectedForVideo: selections.video,
+    selectedForConvertTo3d: selections.convertTo3d,
+    selectedForAddAudio: selections.addAudio,
+    ...overrides,
+  })
+
+  const selectionsToSavePayload = (s: typeof selections): SelectionState => ({
+    selectedBefore: s.before,
+    selectedAfter: s.after,
+    selectedForClean: s.clean,
+    selectedForStaging: s.staging,
+    selectedForAddItem: s.addItem,
+    selectedForView: s.view,
+    selectedForDifferentAngles: s.differentAngles,
+    selectedForVideo: s.video,
+    selectedForConvertTo3d: s.convertTo3d,
+    selectedForAddAudio: s.addAudio,
+  })
+
   // Helper to handle API response
   const handleAPIResponse = (action: ActionType, data: any, originalImageId: string, prompt?: string, selection?: PolygonPoint[] | null) => {
     if (action === 'generate-video') {
@@ -174,24 +202,9 @@ export default function Home() {
         view: storedImage.id, // Set to view mode to show the video
       }))
       
-      // Save to localStorage
-      saveSelections({
-        selectedBefore: selections.before,
-        selectedAfter: selections.after,
-        selectedForClean: selections.clean,
-        selectedForStaging: selections.staging,
-        selectedForAddItem: selections.addItem,
-        selectedForView: storedImage.id, // Set view to the generated video
-        selectedForDifferentAngles: selections.differentAngles,
-        selectedForVideo: null, // Clear video generation selection
-        selectedForConvertTo3d: selections.convertTo3d,
-        selectedForAddAudio: selections.addAudio,
-      })
-      
-      // Clear video prompt
+      saveSelections(toSavePayload({ selectedForView: storedImage.id, selectedForVideo: null }))
       setPrompts(prev => ({ ...prev, video: '' }))
     } else if (action === 'add-audio') {
-      // New video with audio: save as new entry (both old and new stay in localStorage), show new one on stage
       if (!data.videoUrl) {
         console.error('No videoUrl in response data:', data)
       }
@@ -208,18 +221,7 @@ export default function Home() {
         addAudio: null,
         view: storedImage.id,
       }))
-      saveSelections({
-        selectedBefore: selections.before,
-        selectedAfter: selections.after,
-        selectedForClean: selections.clean,
-        selectedForStaging: selections.staging,
-        selectedForAddItem: selections.addItem,
-        selectedForView: storedImage.id,
-        selectedForDifferentAngles: selections.differentAngles,
-        selectedForVideo: selections.video,
-        selectedForConvertTo3d: selections.convertTo3d,
-        selectedForAddAudio: null,
-      })
+      saveSelections(toSavePayload({ selectedForView: storedImage.id, selectedForAddAudio: null }))
       setPrompts(prev => ({ ...prev, addAudio: '' }))
     } else if (action === 'convert-to-3d') {
       // For 3D objects, save with glbUrl and sourceImageId (similar to video)
@@ -244,21 +246,7 @@ export default function Home() {
         view: storedImage.id, // Set to view mode to show the 3D model
       }))
       
-      // Save to localStorage
-      saveSelections({
-        selectedBefore: selections.before,
-        selectedAfter: selections.after,
-        selectedForClean: selections.clean,
-        selectedForStaging: selections.staging,
-        selectedForAddItem: selections.addItem,
-        selectedForView: storedImage.id, // Set view to the generated 3D object
-        selectedForDifferentAngles: selections.differentAngles,
-        selectedForVideo: selections.video,
-        selectedForConvertTo3d: null, // Clear 3D conversion selection
-        selectedForAddAudio: selections.addAudio,
-      })
-      
-      // Clear point prompts
+      saveSelections(toSavePayload({ selectedForView: storedImage.id, selectedForConvertTo3d: null }))
       setPointPrompts([])
     } else {
       // For other actions, use the existing logic
@@ -286,19 +274,14 @@ export default function Home() {
         [selectionKey]: null,
       }))
       
-      // Save to localStorage
-      saveSelections({
+      saveSelections(toSavePayload({
         selectedBefore: originalImageId,
         selectedAfter: storedImage.id,
         selectedForClean: action === 'clean' ? null : selections.clean,
         selectedForStaging: action === 'stage' ? null : selections.staging,
         selectedForAddItem: action === 'add-item' ? null : selections.addItem,
-        selectedForView: selections.view,
         selectedForDifferentAngles: action === 'different-angles' ? null : selections.differentAngles,
-        selectedForVideo: selections.video,
-        selectedForConvertTo3d: selections.convertTo3d,
-        selectedForAddAudio: selections.addAudio,
-      })
+      }))
       
       // Clear prompt for add-item
       if (action === 'add-item') {
@@ -589,18 +572,7 @@ export default function Home() {
       }
       
       setSelections(newSelections)
-      saveSelections({
-        selectedBefore: newSelections.before,
-        selectedAfter: newSelections.after,
-        selectedForClean: newSelections.clean,
-        selectedForStaging: newSelections.staging,
-        selectedForAddItem: newSelections.addItem,
-        selectedForView: newSelections.view,
-        selectedForDifferentAngles: newSelections.differentAngles,
-        selectedForVideo: newSelections.video,
-        selectedForConvertTo3d: newSelections.convertTo3d,
-        selectedForAddAudio: newSelections.addAudio,
-      })
+      saveSelections(selectionsToSavePayload(newSelections))
     }
   }
 
@@ -669,18 +641,7 @@ export default function Home() {
     }
     
     setSelections(newSelections)
-    saveSelections({
-      selectedBefore: newSelections.before,
-      selectedAfter: newSelections.after,
-      selectedForClean: newSelections.clean,
-      selectedForStaging: newSelections.staging,
-      selectedForAddItem: newSelections.addItem,
-      selectedForView: newSelections.view,
-      selectedForDifferentAngles: newSelections.differentAngles,
-      selectedForVideo: newSelections.video,
-      selectedForConvertTo3d: newSelections.convertTo3d,
-      selectedForAddAudio: newSelections.addAudio,
-    })
+    saveSelections(selectionsToSavePayload(newSelections))
   }
 
   // Style and prompt handlers

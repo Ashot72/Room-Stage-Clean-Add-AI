@@ -253,7 +253,6 @@ export async function POST(req: Request) {
         });
 
       case "add-audio":
-        // Add synchronized audio to video using MMAudio V2
         if (!videoUrl) {
           return Response.json({ error: "Video URL is required for add-audio" }, { status: 400 });
         }

@@ -1,6 +1,6 @@
 'use client'
 
-import { StoredImage } from '@/lib/imageStorage'
+import { StoredImage, getTypeLabel } from '@/lib/imageStorage'
 
 interface ThumbnailPreviewProps {
   image: StoredImage | null
@@ -16,23 +16,6 @@ interface ThumbnailPreviewProps {
   selectedForVideo?: string | null
   selectedForConvertTo3d?: string | null
   selectedForAddAudio?: string | null
-}
-
-const getTypeLabel = (image: StoredImage) => {
-  // Audio-generated items (video + hasAudio) show as "Audio" not "Video"
-  if (image.type === 'video' && image.metadata?.hasAudio) return 'Audio'
-  const labels: Record<StoredImage['type'], string> = {
-    original: 'Original',
-    cleaned: 'Cleaned',
-    staged: 'Staged',
-    reference: 'Reference',
-    added: 'Add Item',
-    angled: 'Different Angles',
-    video: 'Video',
-    '3d-object': '3D Object',
-    canva: 'Canva',
-  }
-  return labels[image.type] || 'Image'
 }
 
 export default function ThumbnailPreview({ 
